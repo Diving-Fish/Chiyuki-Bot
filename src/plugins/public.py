@@ -1,12 +1,17 @@
-from nonebot import on_command, on_message, on_notice
+from nonebot import on_command, on_message, on_notice, require, get_bots
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
+from nonebot.adapters.cqhttp import Message
 from random import randint
+import asyncio
 
 from src.libraries.tool import hash
 
 import time
 from collections import defaultdict
+
+
+scheduler = require("nonebot_plugin_apscheduler").scheduler
 
 
 help_text = """桜千雪です、よろしく。
@@ -68,13 +73,72 @@ async def _group_poke(bot: Bot, event: Event, state: dict) -> bool:
 
 
 poke = on_notice(rule=_group_poke, priority=10, block=True)
+poke_dict = defaultdict(lambda: defaultdict(int))
 
 
 @poke.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     if event.__getattribute__('group_id') is None:
         event.__delattr__('group_id')
+    else:
+        group_dict = poke_dict[event.__getattribute__('group_id')]
+        group_dict[event.sender_id] += 1
     await poke.send('戳你妈')
+
+
+async def send_poke_stat(group_id: int, bot: Bot):
+    if group_id not in poke_dict:
+        return
+    else:
+        group_stat = poke_dict[group_id]
+        sorted_dict = {k: v for k, v in sorted(group_stat.items(), key=lambda item: item[1], reverse=True)}
+        index = 0
+        data = []
+        for k in sorted_dict:
+            data.append((k, sorted_dict[k]))
+            if index == 3:
+                break
+        await bot.send_msg(group_id=group_id, message="接下来公布一下我上次重启以来，本群最闲着没事干玩戳一戳的人")
+        await asyncio.sleep(1)
+        if len(data) == 3:
+            await bot.send_msg(group_id=group_id, message=Message([
+                {"type": "text", "data": {"text": "第三名，"}},
+                {"type": "at", "data": {"qq": f"{data[2][0]}"}},
+                {"type": "text", "data": {"text": f"，一共戳了我{data[2][1]}次，这就算了"}},
+            ]))
+            await asyncio.sleep(1)
+        if len(data) == 2:
+            await bot.send_msg(group_id=group_id, message=Message([
+                {"type": "text", "data": {"text": "第二名，"}},
+                {"type": "at", "data": {"qq": f"{data[1][0]}"}},
+                {"type": "text", "data": {"text": f"，一共戳了我{data[1][1]}次，也太几把闲得慌了，建议多戳戳自己肚皮"}},
+            ]))
+            await asyncio.sleep(1)
+        await bot.send_msg(group_id=group_id, message=Message([
+            {"type": "text", "data": {"text": "最JB离谱的第一名，"}},
+            {"type": "at", "data": {"qq": f"{data[0][0]}"}},
+            {"type": "text", "data": {"text": f"，一共戳了我{data[0][1]}次，就那么喜欢听我骂你吗"}},
+        ]))
+
+
+poke_stat = on_command("本群戳一戳情况")
+
+
+@poke_stat.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    group_id = event.group_id
+    await send_poke_stat(group_id, bot)
+
+
+@scheduler.scheduled_job("cron", hour="*/4", id="time_for_poke_stat")
+async def run_every_4_hour():
+    for k in get_bots():
+        bot = get_bots()[k]
+    for group_id in poke_dict:
+        await send_poke_stat(group_id, bot)
+
+
+scheduler.add_job(run_every_4_hour)
 
 
 repeat = on_message(priority=99)
