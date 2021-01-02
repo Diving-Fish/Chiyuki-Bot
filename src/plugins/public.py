@@ -1,6 +1,7 @@
 from nonebot import on_command, on_message, on_notice
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
+from random import randint
 
 from src.libraries.tool import hash
 
@@ -81,4 +82,6 @@ repeat = on_message(priority=99)
 
 @repeat.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    await repeat.finish(event.get_message())
+    r = randint(1, 100)
+    if r <= 2:
+        await repeat.finish(event.get_message())
