@@ -96,6 +96,7 @@ async def send_poke_stat(group_id: int, bot: Bot):
         data = []
         for k in sorted_dict:
             data.append((k, sorted_dict[k]))
+            index += 1
             if index == 3:
                 break
         await bot.send_msg(group_id=group_id, message="接下来公布一下我上次重启以来，本群最闲着没事干玩戳一戳的人")
@@ -107,7 +108,7 @@ async def send_poke_stat(group_id: int, bot: Bot):
                 {"type": "text", "data": {"text": f"，一共戳了我{data[2][1]}次，这就算了"}},
             ]))
             await asyncio.sleep(1)
-        if len(data) == 2:
+        if len(data) >= 2:
             await bot.send_msg(group_id=group_id, message=Message([
                 {"type": "text", "data": {"text": "第二名，"}},
                 {"type": "at", "data": {"qq": f"{data[1][0]}"}},
