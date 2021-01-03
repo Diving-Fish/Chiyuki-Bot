@@ -146,5 +146,6 @@ dmypy.json
 *.ttf
 
 .idea
+chiyuki.db
 
 # End of https://www.toptal.com/developers/gitignore/api/python

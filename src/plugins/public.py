@@ -1,13 +1,14 @@
 from PIL import Image
 from nonebot import on_command, on_message, on_notice, require, get_bots
+from nonebot.config import Config
 from nonebot.typing import T_State
-from nonebot.adapters import Event, Bot
-from nonebot.adapters.cqhttp import Message
+from nonebot.adapters.cqhttp import Message, Event, Bot
 from random import randint
 import asyncio
 
 from src.libraries.image import image_to_base64, path, draw_text, get_jlpx
 from src.libraries.tool import hash
+import src.libraries.database as db
 
 import time
 from collections import defaultdict
@@ -78,22 +79,52 @@ poke = on_notice(rule=_group_poke, priority=10, block=True)
 poke_dict = defaultdict(lambda: defaultdict(int))
 
 
+async def invoke_poke(group_id, user_id) -> str:
+    ret = "default"
+    ts = int(time.time())
+    c = await db.cursor()
+    await c.execute(f"select * from group_poke_table where group_id={group_id}")
+    data = await c.fetchone()
+    if data is None:
+        await c.execute(f'insert into group_poke_table values ({group_id}, {ts}, 1, 0, "default")')
+    else:
+        t2 = ts
+        if data[3] == 1:
+            return "disabled"
+        if data[4].startswith("limited"):
+            duration = int(data[4][7:])
+            if ts - duration < data[1]:
+                ret = "limited"
+                t2 = data[1]
+        await c.execute(f'update group_poke_table set last_trigger_time={t2}, triggered={data[2] + 1} where group_id={group_id}')
+    await c.execute(f"select * from user_poke_table where group_id={group_id} and user_id={user_id}")
+    data2 = await c.fetchone()
+    if data2 is None:
+        await c.execute(f'insert into user_poke_table values ({user_id}, {group_id}, 1)')
+    else:
+        await c.execute(f'update user_poke_table set triggered={data2[2] + 1} where user_id={user_id} and group_id={group_id}')
+    await db.commit()
+    return ret
+
+
 @poke.handle()
 async def _(bot: Bot, event: Event, state: T_State):
+    v = "default"
     if event.__getattribute__('group_id') is None:
         event.__delattr__('group_id')
     else:
         group_dict = poke_dict[event.__getattribute__('group_id')]
         group_dict[event.sender_id] += 1
+        v = await invoke_poke(event.group_id, event.sender_id)
+        if v == "disabled":
+            await poke.finish()
+            return
     r = randint(1, 14)
-    if r == 1:
-        img_p = Image.open(path)
-        draw_text(img_p, '戳你妈', 0)
-        draw_text(img_p, '有尝试过玩Cytus II吗', 400)
+    if r == 1 or v == "limited":
         await poke.send(Message([{
-            "type": "image",
+            "type": "poke",
             "data": {
-                "file": f"base64://{str(image_to_base64(img_p), encoding='utf-8')}"
+                "qq": f"{event.sender_id}"
             }
         }]))
     elif r == 2:
@@ -106,10 +137,13 @@ async def _(bot: Bot, event: Event, state: T_State):
             }
         }]))
     elif r == 4:
+        img_p = Image.open(path)
+        draw_text(img_p, '戳你妈', 0)
+        draw_text(img_p, '有尝试过玩Cytus II吗', 400)
         await poke.send(Message([{
-            "type": "poke",
+            "type": "image",
             "data": {
-                "qq": f"{event.sender_id}"
+                "file": f"base64://{str(image_to_base64(img_p), encoding='utf-8')}"
             }
         }]))
     elif r == 5:
@@ -177,15 +211,38 @@ async def _(bot: Bot, event: Event, state: T_State):
     await send_poke_stat(group_id, bot)
 
 
-@scheduler.scheduled_job("cron", hour="*/12", id="time_for_poke_stat")
-async def run_every_4_hour():
-    for k in get_bots():
-        bot = get_bots()[k]
-    for group_id in poke_dict:
-        await send_poke_stat(group_id, bot)
+poke_setting = on_command("戳一戳设置")
 
 
-scheduler.add_job(run_every_4_hour)
+@poke_setting.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    group_members = await bot.get_group_member_list(group_id=event.group_id)
+    for m in group_members:
+        if m['user_id'] == event.user_id:
+            break
+    if m['role'] != 'owner' and m['role'] != 'admin' and m['user_id'] not in Config.superusers:
+        await poke_setting.finish("只有管理员可以设置戳一戳")
+        return
+    argv = str(event.get_message()).strip().split(' ')
+    try:
+        if argv[0] == "默认":
+            c = await db.cursor()
+            await c.execute(f'update group_poke_table set disabled=0, strategy="default" where group_id={event.group_id}')
+        elif argv[0] == "限制":
+            c = await db.cursor()
+            await c.execute(
+                f'update group_poke_table set disabled=0, strategy="limited{int(argv[1])}" where group_id={event.group_id}')
+        elif argv[0] == "禁用":
+            c = await db.cursor()
+            await c.execute(
+                f'update group_poke_table set disabled=1 where group_id={event.group_id}')
+        else:
+            raise ValueError
+        await poke_setting.send("设置成功")
+        await db.commit()
+    except (IndexError, ValueError):
+        await poke_setting.finish("命令格式：\n戳一戳设置 默认   将启用默认的戳一戳设定\n戳一戳设置 限制 <秒>   在戳完一次bot的指定时间内，调用戳一戳只会让bot反过来戳你\n戳一戳设置 禁用   将禁用戳一戳的相关功能")
+    pass
 
 
 repeat = on_message(priority=99)
