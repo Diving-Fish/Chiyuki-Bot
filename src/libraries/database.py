@@ -3,6 +3,10 @@ import sqlite3
 import asyncio
 
 
+class G:
+    db = None
+
+
 async def init_db() -> aiosqlite.Connection:
     db = await aiosqlite.connect("src/static/chiyuki.db")
     cursor = await db.cursor()
@@ -13,15 +17,16 @@ async def init_db() -> aiosqlite.Connection:
 
     except sqlite3.OperationalError:
         pass
-    return db
-
-
-db = asyncio.new_event_loop().run_until_complete(init_db())
+    G.db = db
 
 
 async def cursor() -> aiosqlite.Cursor:
-    return await db.cursor()
+    if G.db is None:
+        await init_db()
+    return await G.db.cursor()
 
 
 async def commit():
-    await db.commit()
+    if G.db is None:
+        await init_db()
+    await G.db.commit()
