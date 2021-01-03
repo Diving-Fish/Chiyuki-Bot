@@ -1,3 +1,4 @@
+from PIL import Image
 from nonebot import on_command, on_message, on_notice, require, get_bots
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
@@ -5,6 +6,7 @@ from nonebot.adapters.cqhttp import Message
 from random import randint
 import asyncio
 
+from src.libraries.image import image_to_base64, path, draw_text, get_jlpx
 from src.libraries.tool import hash
 
 import time
@@ -83,7 +85,51 @@ async def _(bot: Bot, event: Event, state: T_State):
     else:
         group_dict = poke_dict[event.__getattribute__('group_id')]
         group_dict[event.sender_id] += 1
-    await poke.send('戳你妈')
+    r = randint(1, 14)
+    if r == 1:
+        img_p = Image.open(path)
+        draw_text(img_p, '戳你妈', 0)
+        draw_text(img_p, '有尝试过玩Cytus II吗', 400)
+        await poke.send(Message([{
+            "type": "image",
+            "data": {
+                "file": f"base64://{str(image_to_base64(img_p), encoding='utf-8')}"
+            }
+        }]))
+    elif r == 2:
+        await poke.send(Message('妈你戳'))
+    elif r == 3:
+        await poke.send(Message([{
+            "type": "image",
+            "data": {
+                "file": get_jlpx('戳', '你妈', '闲着没事干')
+            }
+        }]))
+    elif r == 4:
+        await poke.send(Message([{
+            "type": "poke",
+            "data": {
+                "qq": f"{event.sender_id}"
+            }
+        }]))
+    elif r == 5:
+        await poke.send(Message('呜呜呜再戳人家要哭哭了啦'))
+    elif r <= 7:
+        await poke.send(Message([{
+            "type": "image",
+            "data": {
+                "file": f"https://www.diving-fish.com/images/poke/{r - 5}.gif",
+            }
+        }]))
+    elif r <= 12:
+        await poke.send(Message([{
+            "type": "image",
+            "data": {
+                "file": f"https://www.diving-fish.com/images/poke/{r - 7}.jpg",
+            }
+        }]))
+    else:
+        await poke.send(Message('戳你妈'))
 
 
 async def send_poke_stat(group_id: int, bot: Bot):
@@ -131,7 +177,7 @@ async def _(bot: Bot, event: Event, state: T_State):
     await send_poke_stat(group_id, bot)
 
 
-@scheduler.scheduled_job("cron", hour="*/4", id="time_for_poke_stat")
+@scheduler.scheduled_job("cron", hour="*/12", id="time_for_poke_stat")
 async def run_every_4_hour():
     for k in get_bots():
         bot = get_bots()[k]
