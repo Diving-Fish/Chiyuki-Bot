@@ -220,7 +220,8 @@ async def _(bot: Bot, event: Event, state: T_State):
     for m in group_members:
         if m['user_id'] == event.user_id:
             break
-    if m['role'] != 'owner' and m['role'] != 'admin' and m['user_id'] not in get_driver().config.superusers:
+    su = get_driver().config.superusers
+    if m['role'] != 'owner' and m['role'] != 'admin' and str(m['user_id']) not in su:
         await poke_setting.finish("只有管理员可以设置戳一戳")
         return
     argv = str(event.get_message()).strip().split(' ')
