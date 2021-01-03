@@ -156,7 +156,7 @@ async def _(bot: Bot, event: Event, state: T_State):
             }} for music in res]))
 
 
-query_chart = on_regex(r"^[绿黄红紫白]?[dx|sd][0-9]+")
+query_chart = on_regex(r"^([绿黄红紫白]?)((?:dx|sd)[0-9]+)")
 
 @query_chart.handle()
 async def _(bot: Bot, event: Event, state: T_State):
