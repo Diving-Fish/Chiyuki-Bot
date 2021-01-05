@@ -265,7 +265,7 @@ async def _(bot: Bot, event: Event, state: dict):
         await unbind.send("你还未绑定角色哦~")
 
 
-intro = on_command('intro', aliases={'i'})
+intro = on_command('intro ', aliases={'i '})
 
 
 @intro.handle()
@@ -277,7 +277,7 @@ async def _(bot: Bot, event: Event, state: dict):
         await intro.send("未找到【%s】！这个角色似乎并没有出现在这个剧本里呢~" % name)
 
 
-time = on_command('time')
+time = on_command('time ')
 
 
 @time.handle()
@@ -290,7 +290,7 @@ async def _(bot: Bot, event: Event, state: dict):
         await time.send("经过%d小时后，玩家的能力发生了如下变化：\n%s" % (t, s))
 
 
-stat = on_command('stat', aliases={'st'})
+stat = on_command('stat ', aliases={'st '})
 
 
 @stat.handle()
@@ -350,7 +350,7 @@ async def _(bot: Bot, event: Event, state: dict):
         return
 
 
-query = on_command('query', aliases={'q'})
+query = on_command('query ', aliases={'q '})
 
 
 @query.handle()
@@ -376,7 +376,7 @@ async def _(bot: Bot, event: Event, state: dict):
     await query.send("【%s】的能力值【%s】为：%d/%d/%d" % (role['name'], stat_name, value, int(value / 2), int(value / 5)))
 
 
-roll = on_command('roll', aliases={'r'})
+roll = on_command('roll ', aliases={'r '})
 
 
 @roll.handle()
@@ -390,7 +390,7 @@ async def _(bot: Bot, event: Event, state: dict):
     await roll.send("【%s】的掷骰结果：%s" % (name, result[0]))
     
     
-sancheck = on_command('sancheck', aliases={'sc'})
+sancheck = on_command('sancheck ', aliases={'sc '})
 
 
 @sancheck.handle()
@@ -418,7 +418,7 @@ async def _(bot: Bot, event: Event, state: dict):
         return
     
     
-rollcheck = on_command('rollcheck', aliases={'rc'})
+rollcheck = on_command('rollcheck ', aliases={'rc '})
 
 
 @rollcheck.handle()
@@ -451,7 +451,7 @@ async def _(bot: Bot, event: Event, state: dict):
         return
 
 
-bind = on_command('bind')
+bind = on_command('bind ')
 
 
 @bind.handle()
