@@ -1,6 +1,5 @@
 from PIL import Image
-from nonebot import on_command, on_message, on_notice, require, get_bots, get_driver
-from nonebot.config import Config
+from nonebot import on_command, on_message, on_notice, require, get_driver
 from nonebot.typing import T_State
 from nonebot.adapters.cqhttp import Message, Event, Bot
 from random import randint
@@ -8,7 +7,6 @@ import asyncio
 
 from src.libraries.image import image_to_base64, path, draw_text, get_jlpx
 from src.libraries.tool import hash
-import src.libraries.database as db
 
 import time
 from collections import defaultdict
@@ -80,6 +78,7 @@ poke_dict = defaultdict(lambda: defaultdict(int))
 
 
 async def invoke_poke(group_id, user_id) -> str:
+    db = get_driver().config.db
     ret = "default"
     ts = int(time.time())
     c = await db.cursor()
@@ -217,6 +216,7 @@ poke_setting = on_command("戳一戳设置")
 
 @poke_setting.handle()
 async def _(bot: Bot, event: Event, state: T_State):
+    db = get_driver().config.db
     group_members = await bot.get_group_member_list(group_id=event.group_id)
     for m in group_members:
         if m['user_id'] == event.user_id:
