@@ -248,7 +248,7 @@ BREAK: {chart['notes'][4]}
 wm_list = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
 
 
-jrwm = on_command('今日舞萌 ', aliases={'今日mai '})
+jrwm = on_command('今日舞萌', aliases={'今日mai'})
 
 
 @jrwm.handle()
