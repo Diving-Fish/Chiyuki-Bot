@@ -130,10 +130,11 @@ async def _(bot: Bot, event: Event, state: T_State):
     elif r == 2:
         await poke.send(Message('妈你戳'))
     elif r == 3:
+        url = await get_jlpx('戳', '你妈', '闲着没事干')
         await poke.send(Message([{
             "type": "image",
             "data": {
-                "file": get_jlpx('戳', '你妈', '闲着没事干')
+                "file": url
             }
         }]))
     elif r == 4:
