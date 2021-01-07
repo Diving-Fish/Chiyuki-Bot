@@ -1,8 +1,9 @@
 import json
 
-from nonebot import on_command, on_message, on_notice
+from nonebot import on_command as _on_command, on_message, on_notice
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
+from nonebot.rule import startswith
 import requests
 import demjson
 import random
@@ -248,6 +249,10 @@ def check(nickname, stat_name, value):
             else:
                 text = "失败"
     return "【%s】进行【%s】检定: D100=%d/%d %s" % (nickname, stat_name, rand, value, text)
+
+
+def on_command(name, *args, **kwargs):
+    return _on_command(name, *args, rule=startswith("."), **kwargs)
 
 
 unbind = on_command("unbind")
