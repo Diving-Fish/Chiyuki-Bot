@@ -1,4 +1,6 @@
+import math
 from collections import defaultdict
+from typing import List, Dict, Any
 
 from nonebot import on_command, on_message, on_notice, on_regex
 from nonebot.typing import T_State
@@ -12,8 +14,8 @@ import random
 import re
 from urllib import parse
 
-music_data = requests.get("https://www.diving-fish.com/api/maimaidxprober/music_data").text
-music_data = json.loads(music_data)
+music_data: str = requests.get("https://www.diving-fish.com/api/maimaidxprober/music_data").text
+music_data: List[Dict] = json.loads(music_data)
 
 
 def random_music(data) -> dict:
@@ -303,3 +305,52 @@ async def _(bot: Bot, event: Event, state: T_State):
     else:
         s = '\n'.join(result_set)
         await find_song.finish(f"您要找的可能是以下歌曲中的其中一首：\n{ s }")
+
+
+query_score = on_command('分数线')
+
+
+@query_score.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    r = "([绿黄红紫白])((?:dx|sd)[0-9]+)"
+    argv = str(event.get_message()).strip().split(" ")
+    if len(argv) == 1 and argv[0] == '帮助':
+        await query_score.send('''此功能为查找某首歌分数线设计。
+命令格式：分数线 <歌曲id> <分数线>
+例如：分数线 白sd337 100
+命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
+以下为 TAP GREAT 的对应表：
+GREAT/GOOD/MISS
+TAP\t1/2.5/5
+HOLD\t2/5/10
+SLIDE\t3/7.5/15
+TOUCH\t1/2.5/5
+BREAK因为分数段太多，不在此列出。''')
+    elif len(argv) == 2:
+        try:
+            grp = re.match(r, argv[0]).groups()
+            level_labels = ['绿', '黄', '红', '紫', '白']
+            level_labels2 = ['Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER']
+            level_index = level_labels.index(grp[0])
+            chart_id = grp[1]
+            line = float(argv[1])
+            for music in music_data:
+                if music['id'] == chart_id:
+                    break
+            chart: Dict[Any] = music['charts'][level_index]
+            tap = chart['notes'][0]
+            slide = chart['notes'][2]
+            hold = chart['notes'][1]
+            touch = chart['notes'][3] if len(chart) == 5 else 0
+            brk = chart['notes'][-1]
+            total_score = 500 * tap + slide * 1500 + hold * 1000 + touch * 500 + brk * 2500
+            break_bonus = 0.01 / brk
+            break_50_reduce = total_score * break_bonus / 4
+            reduce = 101 - line
+            if reduce <= 0 or reduce >= 101:
+                raise ValueError
+            await query_chart.send(f'''{music['title']} {level_labels2[level_index]}
+分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f},
+BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT''')
+        except Exception:
+            await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
