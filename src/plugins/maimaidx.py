@@ -338,11 +338,11 @@ BREAK因为分数段太多，不在此列出。''')
                 if music['id'] == chart_id:
                     break
             chart: Dict[Any] = music['charts'][level_index]
-            tap = chart['notes'][0]
-            slide = chart['notes'][2]
-            hold = chart['notes'][1]
-            touch = chart['notes'][3] if len(chart) == 5 else 0
-            brk = chart['notes'][-1]
+            tap = int(chart['notes'][0])
+            slide = int(chart['notes'][2])
+            hold = int(chart['notes'][1])
+            touch = int(chart['notes'][3]) if len(chart['notes']) == 5 else 0
+            brk = int(chart['notes'][-1])
             total_score = 500 * tap + slide * 1500 + hold * 1000 + touch * 500 + brk * 2500
             break_bonus = 0.01 / brk
             break_50_reduce = total_score * break_bonus / 4
@@ -350,7 +350,7 @@ BREAK因为分数段太多，不在此列出。''')
             if reduce <= 0 or reduce >= 101:
                 raise ValueError
             await query_chart.send(f'''{music['title']} {level_labels2[level_index]}
-分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f},
-BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT''')
+分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f}(每个-{10000 / total_score:.4f}%),
+BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)''')
         except Exception:
             await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
