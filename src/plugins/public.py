@@ -284,6 +284,14 @@ async def _(bot: Bot, event: Event, state: T_State):
         await random_person.finish("请在群聊使用")
 
 
+snmb = on_regex("随个.+", priority=50)
+
+
+@snmb.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    await snmb.finish("随你妈")
+
+
 repeat = on_message(priority=99)
 
 
