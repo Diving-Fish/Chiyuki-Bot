@@ -32,7 +32,7 @@ jlpx = on_command('金龙盘旋')
 
 
 @jlpx.handle()
-async def jlpx(bot: Bot, event: Event, state: T_State):
+async def _(bot: Bot, event: Event, state: T_State):
     argv = str(event.get_message()).strip().split(' ')
     if len(argv) != 3:
         await jlpx.send("金龙盘旋需要三个参数")

@@ -289,7 +289,10 @@ snmb = on_regex("随个.+", priority=50)
 
 @snmb.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    await snmb.finish("随你妈")
+    await snmb.finish(Message([
+        {"type": "text", "data": {"text": "随你"}},
+        {"type": "image", "data": {"file": "https://www.diving-fish.com/images/emoji/horse.png"}}
+    ]))
 
 
 repeat = on_message(priority=99)
