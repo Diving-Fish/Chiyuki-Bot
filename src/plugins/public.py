@@ -1,5 +1,8 @@
+import random
+import re
+
 from PIL import Image
-from nonebot import on_command, on_message, on_notice, require, get_driver
+from nonebot import on_command, on_message, on_notice, require, get_driver, on_regex
 from nonebot.typing import T_State
 from nonebot.adapters.cqhttp import Message, Event, Bot
 from random import randint
@@ -245,6 +248,40 @@ async def _(bot: Bot, event: Event, state: T_State):
     except (IndexError, ValueError):
         await poke_setting.finish("命令格式：\n戳一戳设置 默认   将启用默认的戳一戳设定\n戳一戳设置 限制 <秒>   在戳完一次bot的指定时间内，调用戳一戳只会让bot反过来戳你\n戳一戳设置 禁用   将禁用戳一戳的相关功能")
     pass
+
+
+random_person = on_regex("随个([男女]?)人")
+
+
+@random_person.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    try:
+        gid = event.group_id
+        glst = await bot.get_group_member_list(group_id=gid, self_id=int(bot.self_id))
+        v = re.match("随个([男女]?)人", str(event.get_message())).group(1)
+        if v == '男':
+            for member in glst[:]:
+                if member['sex'] != 'male':
+                    glst.remove(member)
+        elif v == '女':
+            for member in glst[:]:
+                if member['sex'] != 'female':
+                    glst.remove(member)
+        m = random.choice(glst)
+        await random_person.finish(Message([{
+            "type": "at",
+            "data": {
+                "qq": event.user_id
+            }
+        }, {
+            "type": "text",
+            "data": {
+                "text": f"\n{m['card'] if m['card'] != '' else m['nickname']}({m['user_id']})"
+            }
+        }]))
+
+    except ValueError:
+        await random_person.finish("请在群聊使用")
 
 
 repeat = on_message(priority=99)
