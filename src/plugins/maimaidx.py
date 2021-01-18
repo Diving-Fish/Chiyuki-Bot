@@ -316,7 +316,7 @@ async def _(bot: Bot, event: Event, state: T_State):
     argv = str(event.get_message()).strip().split(" ")
     if len(argv) == 1 and argv[0] == '帮助':
         await query_score.send('''此功能为查找某首歌分数线设计。
-命令格式：分数线 <歌曲id> <分数线>
+命令格式：分数线 <难度+歌曲id> <分数线>
 例如：分数线 白sd337 100
 命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
 以下为 TAP GREAT 的对应表：
@@ -325,7 +325,7 @@ TAP\t1/2.5/5
 HOLD\t2/5/10
 SLIDE\t3/7.5/15
 TOUCH\t1/2.5/5
-BREAK因为分数段太多，不在此列出。''')
+BREAK\t5/12.5/25(外加200落)''')
     elif len(argv) == 2:
         try:
             grp = re.match(r, argv[0]).groups()
