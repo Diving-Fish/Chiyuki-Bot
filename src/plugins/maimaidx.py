@@ -8,58 +8,51 @@ from nonebot.adapters import Event, Bot
 from nonebot.adapters.cqhttp import Message
 
 from src.libraries.tool import hash
+from src.libraries.maimaidx_music import *
 import requests
 import json
 import random
 import re
 from urllib import parse
 
-music_data: str = requests.get("https://www.diving-fish.com/api/maimaidxprober/music_data").text
-music_data: List[Dict] = json.loads(music_data)
-
 
 def random_music(data) -> dict:
     return data[random.randrange(0, len(data))]
 
 
-def song_txt(music, file):
-    return [
+def song_txt(music: Music):
+    return Message([
         {
             "type": "text",
             "data": {
-                "text": f"{music['id']}. {music['title']}\n"
+                "text": f"{music.id}. {music.title}\n"
             }
         },
         {
             "type": "image",
             "data": {
-                "file": f"{file}"
+                "file": f"https://www.diving-fish.com/covers/{music.id}.jpg"
             }
         },
         {
             "type": "text",
             "data": {
-                "text": f"\n{'/'.join(music['level'])}"
+                "text": f"\n{'/'.join(music.level)}"
             }
         }
-    ]
-
-
-async def send_song(ctx, music: dict):
-    file = f"https://www.diving-fish.com/covers/{music['id']}.jpg"
-    await ctx.send(Message(song_txt(music, file)))
+    ])
 
 
 def inner_level_q(ds1, ds2=None):
     result_set = []
-    diff_label = ['Bas', 'Adv', 'Exp', 'Mst', 'REM']
+    diff_label = ['Bas', 'Adv', 'Exp', 'Mst', 'ReM']
+    if ds2 is not None:
+        music_data = total_list.filter(ds=(ds1, ds2))
+    else:
+        music_data = total_list.filter(ds=ds1)
     for music in music_data:
-        for i in range(len(music['ds'])):
-            if ds2 is None:
-                if music['ds'][i] == ds1:
-                    result_set.append((music['id'], music['title'], music['ds'][i], diff_label[i], music['level'][i]))
-            elif ds1 <= music['ds'][i] <= ds2:
-                result_set.append((music['id'], music['title'], music['ds'][i], diff_label[i], music['level'][i]))
+        for i in music.diff:
+            result_set.append((music['id'], music['title'], music['ds'][i], diff_label[i], music['level'][i]))
     return result_set
 
 
@@ -102,23 +95,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         else:
             tp = ["SD", "DX"]
         level = res.groups()[2]
-        if res.groups()[1] == "":
-            for music in music_data:
-                if music['type'] not in tp:
-                    continue
-                try:
-                    _ = music['level'].index(level)
-                    filted.append(music)
-                except Exception:
-                    pass
-        else:
-            level_index = level_labels.index(res.groups()[1])
-            for music in music_data:
-                if level_index < len(music['level']):
-                    if music['level'][level_index] == level and music['type'] in tp:
-                        filted.append(music)
-        music = random_music(filted)
-        await send_song(spec_rand, music)
+        music_data = total_list.filter(level=level, diff=['绿黄红紫白'.index(res.groups()[1])], type=tp)
+        await spec_rand.send(song_txt(music_data.random()))
     except Exception as e:
         print(e)
         await spec_rand.finish("随机命令错误，请检查语法")
@@ -129,8 +107,7 @@ mr = on_regex(r".*maimai.*什么")
 
 @mr.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    music = random_music(music_data)
-    await send_song(mr, music)
+    await mr.finish(song_txt(total_list.random()))
 
 
 search_music = on_regex(r"^查歌.+")
@@ -142,15 +119,7 @@ async def _(bot: Bot, event: Event, state: T_State):
     name = re.match(regex, str(event.get_message())).groups()[0].strip()
     if name == "":
         return
-    res = []
-    for music in music_data:
-        try:
-            music['title'].lower().index(name.lower())
-            res.append(music)
-        except ValueError:
-            pass
-    if not res:
-        await search_music.finish("未找到此乐曲")
+    res = total_list.filter(title_search=name)
     await search_music.finish(Message([
         {"type": "text",
             "data": {
@@ -159,6 +128,7 @@ async def _(bot: Bot, event: Event, state: T_State):
 
 
 query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
+
 
 @query_chart.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -170,9 +140,7 @@ async def _(bot: Bot, event: Event, state: T_State):
             level_index = level_labels.index(groups[0])
             level_name = ['Basic', 'Advanced', 'Expert', 'Master', 'Re: MASTER']
             name = groups[1]
-            for music in music_data:
-                if music['id'] == name:
-                    break
+            music = total_list.by_id(name)
             chart = music['charts'][level_index]
             ds = music['ds'][level_index]
             level = music['level'][level_index]
@@ -218,9 +186,7 @@ BREAK: {chart['notes'][4]}
             await query_chart.send("未找到该谱面")
     else:
         name = groups[1]
-        for music in music_data:
-            if music['id'] == name:
-                break
+        music = total_list.by_id(name)
         try:
             file = f"https://www.diving-fish.com/covers/{music['id']}.jpg"
             await query_chart.send(Message([
@@ -269,10 +235,10 @@ async def _(bot: Bot, event: Event, state: T_State):
         elif wm_value[i] == 0:
             s += f'忌 {wm_list[i]}\n'
     s += "千雪提醒您：打机时不要大力拍打或滑动哦\n今日推荐歌曲："
-    music = music_data[h % len(music_data)]
+    music = total_list[h % len(total_list)]
     await jrwm.finish(Message([
         {"type": "text", "data": {"text": s}}
-    ] + song_txt(music, f"https://www.diving-fish.com/covers/{music['id']}.jpg")))
+    ] + song_txt(music)))
 
 
 music_aliases = defaultdict(list)
@@ -298,10 +264,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         return
     result_set = music_aliases[name]
     if len(result_set) == 1:
-        for music in music_data:
-            if music['title'] == result_set[0]:
-                break
-        await find_song.finish(Message([{"type": "text", "data": {"text": "您要找的是不是"}}] + song_txt(music, f"https://www.diving-fish.com/covers/{music['id']}.jpg")))
+        music = total_list.by_title(result_set[0])
+        await find_song.finish(Message([{"type": "text", "data": {"text": "您要找的是不是"}}] + song_txt(music)))
     else:
         s = '\n'.join(result_set)
         await find_song.finish(f"您要找的可能是以下歌曲中的其中一首：\n{ s }")
@@ -334,9 +298,7 @@ BREAK\t5/12.5/25(外加200落)''')
             level_index = level_labels.index(grp[0])
             chart_id = grp[1]
             line = float(argv[1])
-            for music in music_data:
-                if music['id'] == chart_id:
-                    break
+            music = total_list.by_id(chart_id)
             chart: Dict[Any] = music['charts'][level_index]
             tap = int(chart['notes'][0])
             slide = int(chart['notes'][2])
