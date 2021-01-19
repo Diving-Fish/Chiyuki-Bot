@@ -158,11 +158,11 @@ async def _(bot: Bot, event: Event, state: T_State):
             }} for music in res]))
 
 
-query_chart = on_regex(r"^([绿黄红紫白]?)((?:dx|sd)[0-9]+)")
+query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
 
 @query_chart.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    regex = "([绿黄红紫白]?)((?:dx|sd)[0-9]+)"
+    regex = "([绿黄红紫白]?)id([0-9]+)"
     groups = re.match(regex, str(event.get_message())).groups()
     level_labels = ['绿', '黄', '红', '紫', '白']
     if groups[0] != "":
@@ -312,7 +312,7 @@ query_score = on_command('分数线')
 
 @query_score.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    r = "([绿黄红紫白])((?:dx|sd)[0-9]+)"
+    r = "([绿黄红紫白])([0-9]+)"
     argv = str(event.get_message()).strip().split(" ")
     if len(argv) == 1 and argv[0] == '帮助':
         await query_score.send('''此功能为查找某首歌分数线设计。
