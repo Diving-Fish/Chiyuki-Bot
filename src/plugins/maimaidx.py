@@ -87,7 +87,6 @@ async def _(bot: Bot, event: Event, state: T_State):
     regex = "随个((?:dx|sd|标准))?([绿黄红紫白]?)([0-9]+\+?)"
     res = re.match(regex, str(event.get_message()).lower())
     try:
-        filted = []
         if res.groups()[0] == "dx":
             tp = ["DX"]
         elif res.groups()[0] == "sd" or res.groups()[0] == "标准":
@@ -95,7 +94,10 @@ async def _(bot: Bot, event: Event, state: T_State):
         else:
             tp = ["SD", "DX"]
         level = res.groups()[2]
-        music_data = total_list.filter(level=level, diff=['绿黄红紫白'.index(res.groups()[1])], type=tp)
+        if res.groups()[1] == "":
+            music_data = total_list.filter(level=level, type=tp)
+        else:
+            music_data = total_list.filter(level=level, diff=['绿黄红紫白'.index(res.groups()[1])], type=tp)
         await spec_rand.send(song_txt(music_data.random()))
     except Exception as e:
         print(e)
