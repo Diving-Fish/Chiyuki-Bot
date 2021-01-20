@@ -1,6 +1,8 @@
 import json
+from collections import defaultdict
 
-from nonebot import on_command as _on_command, on_message, on_notice
+from nonebot import on_command as _on_command, on_message, on_notice, get_driver
+from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
 from nonebot.rule import startswith
@@ -9,6 +11,30 @@ import demjson
 import random
 import math
 import time as _time
+
+
+driver = get_driver()
+
+
+@driver.on_startup
+def _():
+    logger.info("Load help text successfully")
+    help_text: dict = get_driver().config.help_text
+    help_text['coc'] = ('查看跑团相关功能', """桜千雪です、よろしく。
+可用命令如下：
+.help 输出此消息
+.jrrp 显示今天的人品值
+.bind <角色名称> 绑定角色
+.r/roll <掷骰表达式> 掷骰
+.rc/rollcheck <技能/属性> [值] 技能/属性检定
+.sc/sancheck <成功> <失败> 理智检定
+.stat/st <技能/属性> <add|sub|set> <值> [触发时间（小时）] 增加/减少/设置属性值，可设定触发时间
+.time <pass> [小时] 设置经过时间
+.query/q <玩家名/QQ> <技能/属性> 查询某玩家的某属性
+.intro/.i <玩家名> 查询此角色的基本信息
+.showall/.sa 获取当前玩家的所有信息（将私聊发送）
+.unbind 解绑角色
+车卡网址：https://www.diving-fish.com/coc_card""")
 
 
 class CocEvent:
