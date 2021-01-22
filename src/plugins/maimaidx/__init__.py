@@ -1,7 +1,10 @@
 import math
 from collections import defaultdict
 from typing import List, Dict, Any
+from bs4 import BeautifulSoup
 
+import aiohttp
+import urllib.parse
 from nonebot import on_command, on_message, on_notice, on_regex, get_driver
 from nonebot.log import logger
 from nonebot.typing import T_State
@@ -9,12 +12,14 @@ from nonebot.adapters import Event, Bot
 from nonebot.adapters.cqhttp import Message
 
 from src.libraries.tool import hash
+from src.libraries.image import generate_table_img
 from src.libraries.maimaidx_music import *
 import requests
 import json
 import random
 import re
 from urllib import parse
+from . import wahlap_crawler
 
 
 driver = get_driver()
@@ -335,3 +340,79 @@ BREAK\t5/12.5/25(外加200落)''')
 BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)''')
         except Exception:
             await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
+
+
+wahlap_ranking = on_command('排行榜')
+
+
+@wahlap_ranking.handle()
+async def _(bot: Bot, event: Event):
+    arg = str(event.get_message())
+    if arg == 'dxr':
+        async with aiohttp.request('GET',
+                                   url=f'http://localhost:8080/maimai-mobile/ranking/deluxeRating/') as resp:
+            text = await resp.text()
+            bs = BeautifulSoup(text, 'html.parser')
+            blocks = bs.find_all('div', class_="ranking_top_block")
+            blocks += bs.find_all('div', class_="ranking_block")
+            lst = []
+            for j in range(len(blocks)):
+                block = blocks[j]
+                name = block.find('div', class_="f_l p_t_10 p_l_10 f_15").text.strip()
+                rt = block.find('div', class_="rating_block").text.strip()
+                if len(lst) > 0 and rt == lst[j - 1][2]:
+                    ranking = lst[j - 1][0]
+                else:
+                    ranking = str(j + 1)
+                lst.append([ranking, name, rt])
+            await wahlap_ranking.finish(Message([{
+                "type": "image",
+                "data": {
+                    "file": f"base64://{generate_table_img(data=lst, title='DX Rating 排行榜')}"
+                }
+            }]))
+
+    else:
+        grp = re.match("([绿黄红紫白])([0-9]+)", arg).groups()
+        if len(grp) != 2:
+            await wahlap_ranking.finish("命令格式有误")
+            return
+        music = total_list.by_id(grp[1])
+        level_index = '绿黄红紫白'.index(grp[0])
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url=f'http://localhost:8080/maimai-mobile/ranking/search/?genre=99&scoreType=2&rankingType=99&diff={level_index}') as resp:
+                text = await resp.text()
+                bs2 = BeautifulSoup(text, 'html.parser')
+                blocks = bs2.find_all('div', string=re.compile(music.title))
+                for block in blocks:
+                    b2 = block.parent.parent.parent
+                    imgs = b2.find_all('img')
+                    is_st = 'standard' in imgs[1]['src']
+                    if is_st == (music.type == 'SD'):
+                        b3s = b2.find_all('input')
+                        idx = b3s[0]['value']
+                        idx = urllib.parse.quote(idx)
+                        break
+            async with session.get(url=f'http://localhost:8080/maimai-mobile/ranking/musicRankingDetail/?idx={idx}&scoreType=2&rankingType=99&diff={level_index}') as resp2:
+                text = await resp2.text()
+                bs = BeautifulSoup(text, 'html.parser')
+                blocks = bs.find_all('div', class_="ranking_top_block")
+                blocks += bs.find_all('div', class_="ranking_block")
+                lst = []
+                for j in range(len(blocks)):
+                    block = blocks[j]
+                    name = block.find('div', class_="f_l p_t_10 p_l_10 f_15").text.strip()
+                    rt = block.find('div', class_="p_15 p_r_10 p_b_0 f_r t_r f_16 f_b").text.strip()
+                    if len(lst) > 0 and rt == lst[j - 1][2]:
+                        ranking = lst[j - 1][0]
+                    else:
+                        ranking = str(j + 1)
+                    lst.append([ranking, name, rt])
+                level_list2 = ['Bas', 'Adv', 'Exp', 'Mst', 'ReM']
+                await wahlap_ranking.finish(Message([{
+                    "type": "image",
+                    "data": {
+                        "file": f"base64://{generate_table_img(data=lst, title=f'{music.id}. {music.title} [{level_list2[level_index]} ]')}"
+                    }
+                }]))
+

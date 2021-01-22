@@ -147,5 +147,6 @@ dmypy.json
 
 .idea
 chiyuki.db
+wahlap_data.txt
 
 # End of https://www.toptal.com/developers/gitignore/api/python

@@ -1,6 +1,7 @@
 import asyncio
 import base64
 from io import BytesIO
+from typing import List
 
 from PIL import ImageFont, ImageDraw, Image
 import re
@@ -52,3 +53,37 @@ async def get_jlpx(jl, px, bottom):
         t = await resp.text()
         regex = '<img src="(.+)">'
         return re.match(regex, t).groups()[0]
+
+
+def generate_table_img(data: List[List[str]], title: str, font_size=22, padding=10, margin=20, border=1):
+    img = Image.new('RGB', (100, 100), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    w, h = 0, 0
+    font = ImageFont.truetype(fontpath, font_size)
+    wa = [0] * len(data[0])
+    for sub in data:
+        for i in range(len(sub)):
+            w1, h1 = draw.textsize(sub[i], font)
+            if w1 > wa[i]:
+                wa[i] = w1
+            if h1 > h:
+                h = h1
+    w = margin * 2
+    for elem in wa:
+        w += elem + padding * 2 + border * 2
+    img = Image.new('RGB', (w, margin * 2 + (1 + len(data)) * (padding * 2 + border * 2 + h)), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    draw.text((margin, margin), title, font=font, fill=(0, 0, 0))
+    y1 = margin + padding * 2 + h
+    y2 = y1
+    for i in range(len(data)):
+        y2 += h + padding * 2 + border * 2
+        x1 = margin
+        x2 = margin
+        for j in range(len(data[i])):
+            x2 += wa[j] + padding * 2 + border * 2
+            draw.rectangle((x1, y1, x2, y2), outline="black", width=border)
+            draw.text((x1 + padding + border, y1 + padding + border), data[i][j], font=font, fill=(0, 0, 0))
+            x1 = x2
+        y1 = y2
+    return str(image_to_base64(img), encoding='utf-8')
