@@ -290,6 +290,6 @@ repeat = on_message(priority=99)
 
 @repeat.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    r = randint(1, 100)
-    if r <= 2:
+    r = random.random()
+    if r <= 0.0114514:
         await repeat.finish(event.get_message())
