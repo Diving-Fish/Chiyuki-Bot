@@ -285,6 +285,20 @@ async def _(bot: Bot, event: Event, state: T_State):
         await random_person.finish("请在群聊使用")
 
 
+shuffle = on_command('shuffle')
+
+
+@shuffle.handle()
+async def _(bot: Bot, event: Event):
+    argv = int(str(event.get_message()))
+    if argv > 100:
+        await shuffle.finish('请输入100以内的数字')
+        return
+    d = [str(i + 1) for i in range(argv)]
+    random.shuffle(d)
+    await shuffle.finish(','.join(d))
+
+
 repeat = on_message(priority=99)
 
 
