@@ -80,7 +80,7 @@ def vcg_text(text, vcg, stroke_width=0, offset=0):
 def red_text(text):
     uv1 = VerticalColorGradient()
     uv1.add_color_stop(0, (0, 0, 0))
-    i1 = vcg_text(text, uv1, stroke_width=16, offset=20)
+    i1 = vcg_text(text, uv1, stroke_width=17, offset=20)
     i1 = i1.transform(i1.size, Image.AFFINE, (1, 0, -4, 0, 1, -3))
 
     uv2 = VerticalColorGradient()
@@ -94,7 +94,7 @@ def red_text(text):
     uv2.add_color_stop(0.91, (240,240,240))
     uv2.add_color_stop(0.95, (166,175,194))
     uv2.add_color_stop(1, (50,50,50))
-    i2 = vcg_text(text, uv2, stroke_width=15, offset=20)
+    i2 = vcg_text(text, uv2, stroke_width=14, offset=20)
     i2 = i2.transform(i2.size, Image.AFFINE, (1, 0, -4, 0, 1, -3))
 
     uv3 = VerticalColorGradient()
