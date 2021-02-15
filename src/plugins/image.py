@@ -1,4 +1,5 @@
 from src.libraries.image import *
+from src.libraries.gosen_choyen import generate
 from nonebot import on_command, on_message, on_notice, on_regex
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
@@ -41,5 +42,22 @@ async def _(bot: Bot, event: Event, state: T_State):
         "type": "image",
         "data": {
             "file": f"{url}"
+        }
+    }]))
+
+
+gocho = on_command('gocho')
+
+
+@gocho.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    argv = str(event.get_message()).strip().split(' ')
+    if len(argv) != 2:
+        await jlpx.send("gocho 需要两个参数")
+    i = generate(argv[0], argv[1])
+    await gocho.send(Message([{
+        "type": "image",
+        "data": {
+            "file": f"base64://{str(image_to_base64(i), encoding='utf-8')}"
         }
     }]))
