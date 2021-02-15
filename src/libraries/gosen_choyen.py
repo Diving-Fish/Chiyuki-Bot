@@ -4,7 +4,7 @@ from typing import Tuple, List
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 # Define your font here.
-__font_path = "msyhbd.ttc"
+__font_path = "./src/static/msyhbd.ttc"
 __font = ImageFont.truetype(__font_path, 100, encoding='utf-8')
 
 
@@ -202,7 +202,7 @@ def generate(red, sliver, offset=-1):
     r = red_text("  " + red)
     s = sliver_text("  " + sliver)
     if offset == -1:
-        offset = int(r.size[0] - s.size[0] / 2 - 60)
+        offset = max(0, int(r.size[0] - s.size[0] / 2 - 60))
     i = Image.new('RGB', (max(r.size[0], s.size[0] + offset), r.size[1] + s.size[1]), (255, 255, 255))
     i.paste(r, box=(0, 0), mask=r.split()[3])
     i.paste(s, box=(offset, r.size[1]), mask=s.split()[3])
