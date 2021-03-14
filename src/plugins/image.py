@@ -5,13 +5,13 @@ from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.cqhttp import Message
 
-
-high_eq = on_regex('低情商.+高情商.+')
+#修改regex匹配
+high_eq = on_regex('/低情商.+高情商.+')
 
 
 @high_eq.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    regex = '低情商(.+)高情商(.+)'
+    regex = '/低情商(.+)高情商(.+)'
     groups = re.match(regex, str(event.get_message())).groups()
     left = groups[0].strip()
     right = groups[1].strip()

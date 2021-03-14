@@ -18,21 +18,22 @@ from collections import defaultdict
 scheduler = require("nonebot_plugin_apscheduler").scheduler
 
 
+#帮助列表
 help = on_command('help')
-
 
 @help.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     v = str(event.get_message()).strip()
     help_text: dict = get_driver().config.help_text
     if v == "":
-        help_str = '\n'.join([f'.help {key}\t{help_text[key][0]}' for key in help_text])
+        help_str = '\n'.join([f'/help {key}\t{help_text[key][0]}' for key in help_text])
         await help.finish(help_str)
     else:
         await help.finish(help_text[v][1])
 
-jrrp = on_command('jrrp')
 
+#今日人品
+jrrp = on_command('jrrp')
 
 @jrrp.handle()
 async def _(bot: Bot, event: Event, state: dict):
@@ -47,9 +48,9 @@ async def _group_poke(bot: Bot, event: Event, state: dict) -> bool:
     return value
 
 
+#戳一戳
 poke = on_notice(rule=_group_poke, priority=10, block=True)
 poke_dict = defaultdict(lambda: defaultdict(int))
-
 
 async def invoke_poke(group_id, user_id) -> str:
     db = get_driver().config.db
@@ -78,7 +79,6 @@ async def invoke_poke(group_id, user_id) -> str:
         await c.execute(f'update user_poke_table set triggered={data2[2] + 1} where user_id={user_id} and group_id={group_id}')
     await db.commit()
     return ret
-
 
 @poke.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -140,6 +140,7 @@ async def _(bot: Bot, event: Event, state: T_State):
         await poke.send(Message('戳你妈'))
 
 
+#戳一戳情况调用函数
 async def send_poke_stat(group_id: int, bot: Bot):
     if group_id not in poke_dict:
         return
@@ -176,8 +177,8 @@ async def send_poke_stat(group_id: int, bot: Bot):
         ]))
 
 
+#戳一戳情况
 poke_stat = on_command("本群戳一戳情况")
-
 
 @poke_stat.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -185,8 +186,8 @@ async def _(bot: Bot, event: Event, state: T_State):
     await send_poke_stat(group_id, bot)
 
 
+#戳一戳设置
 poke_setting = on_command("戳一戳设置")
-
 
 @poke_setting.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -221,8 +222,8 @@ async def _(bot: Bot, event: Event, state: T_State):
     pass
 
 
-random_person = on_regex("随个([男女]?)人")
-
+#按性别随机群友
+random_person = on_regex("/随个([男女]?)人")
 
 @random_person.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -239,24 +240,28 @@ async def _(bot: Bot, event: Event, state: T_State):
                 if member['sex'] != 'female':
                     glst.remove(member)
         m = random.choice(glst)
-        await random_person.finish(Message([{
-            "type": "at",
-            "data": {
-                "qq": event.user_id
-            }
-        }, {
-            "type": "text",
-            "data": {
-                "text": f"\n{m['card'] if m['card'] != '' else m['nickname']}({m['user_id']})"
-            }
-        }]))
+        await random_person.finish(
+            Message([
+                {
+                    "type": "at",
+                    "data": {
+                        "qq": event.user_id
+                    }
+                }, {
+                    "type": "text",
+                    "data": {
+                        "text": f"\n{m['card'] if m['card'] != '' else m['nickname']}({m['user_id']})"
+                    }
+                }
+            ])
+        )
 
     except AttributeError:
         await random_person.finish("请在群聊使用")
 
 
-snmb = on_regex("随个.+", priority=50)
-
+#"随个"的其他任意匹配【随机群友/挨骂】
+snmb = on_regex("/随个.+", priority=50)
 
 @snmb.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -285,8 +290,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         await random_person.finish("请在群聊使用")
 
 
+#随机100以内排列
 shuffle = on_command('shuffle')
-
 
 @shuffle.handle()
 async def _(bot: Bot, event: Event):
@@ -299,8 +304,25 @@ async def _(bot: Bot, event: Event):
     await shuffle.finish(','.join(d))
 
 
-repeat = on_message(priority=99)
+#随机选择
+pick = on_regex("今天.+[还是.+]+")
 
+@pick.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    regex = "今天(.+?)还是(.+)"
+    res = re.match(regex, str(event.get_message())).groups()
+    await pick.finish(
+        Message([{
+            "type": "text",
+            "data": {
+                "text": f"{random.choice(res)}\n"
+            }
+        }])
+    )
+
+
+#复读
+repeat = on_message(priority=99)
 
 @repeat.handle()
 async def _(bot: Bot, event: Event, state: T_State):

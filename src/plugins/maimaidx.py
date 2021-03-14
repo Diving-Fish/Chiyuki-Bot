@@ -17,8 +17,8 @@ import re
 from urllib import parse
 
 
+#初始化driver，定义帮助信息
 driver = get_driver()
-
 
 @driver.on_startup
 def _():
@@ -37,6 +37,7 @@ XXXmaimaiXXX什么 随机一首歌
 分数线 <难度+歌曲id> <分数线> 详情请输入“分数线 帮助”查看""")
 
 
+#歌曲打包消息
 def song_txt(music: Music):
     return Message([
         {
@@ -60,9 +61,10 @@ def song_txt(music: Music):
     ])
 
 
+#按定数筛选歌曲
 def inner_level_q(ds1, ds2=None):
     result_set = []
-    diff_label = ['Bas', 'Adv', 'Exp', 'Mst', 'ReM']
+    diff_label = ['Bas', 'Adv', 'Exp', 'Mas', 'ReM']
     if ds2 is not None:
         music_data = total_list.filter(ds=(ds1, ds2))
     else:
@@ -73,8 +75,8 @@ def inner_level_q(ds1, ds2=None):
     return result_set
 
 
+#定数查歌
 inner_level = on_command('inner_level ', aliases={'定数查歌 '})
-
 
 @inner_level.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -95,8 +97,8 @@ async def _(bot: Bot, event: Event, state: T_State):
     await inner_level.finish(s.strip())
 
 
-spec_rand = on_regex(r"^随个(?:dx|sd|标准)?[绿黄红紫白]?[0-9]+\+?")
-
+#按限制条件随机谱面
+spec_rand = on_regex(r"^/随个(?:dx|sd|标准)?[绿黄红紫白]?[0-9]+\+?")
 
 @spec_rand.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -121,20 +123,20 @@ async def _(bot: Bot, event: Event, state: T_State):
         await spec_rand.finish("随机命令错误，请检查语法")
 
 
+#随机谱面
 mr = on_regex(r".*maimai.*什么")
-
 
 @mr.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     await mr.finish(song_txt(total_list.random()))
 
 
-search_music = on_regex(r"^查歌.+")
-
+#按曲名查歌曲id
+search_music = on_regex(r"^/查歌.+")
 
 @search_music.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    regex = "查歌(.+)"
+    regex = "/查歌(.+)"
     name = re.match(regex, str(event.get_message())).groups()[0].strip()
     if name == "":
         return
@@ -146,8 +148,8 @@ async def _(bot: Bot, event: Event, state: T_State):
             }} for music in res]))
 
 
-query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
-
+#按id查歌
+query_chart = on_regex(r"^/([绿黄红紫白]?)id([0-9]+)")
 
 @query_chart.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -232,11 +234,10 @@ BREAK: {chart['notes'][4]}
             await query_chart.send("未找到该乐曲")
 
 
+#今日舞萌
 wm_list = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
 
-
 jrwm = on_command('今日舞萌', aliases={'今日mai'})
-
 
 @jrwm.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -271,15 +272,15 @@ for t in tmp:
             music_aliases[arr[i].lower()].append(arr[0])
 
 
-find_song = on_regex(r".+是什么歌")
-
+#查找歌曲别名
+find_song = on_regex(r"/.+是什么歌")
 
 @find_song.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    regex = "(.+)是什么歌"
+    regex = "/(.+)是什么歌"
     name = re.match(regex, str(event.get_message())).groups()[0].strip().lower()
     if name not in music_aliases:
-        await find_song.finish("未找到此歌曲\n舞萌 DX 歌曲别名收集计划：https://docs.qq.com/sheet/DQ0pvUHh6b1hjcGpl")
+        await find_song.finish("未找到此歌曲["+name+"]\n舞萌 DX 歌曲别名收集计划：https://docs.qq.com/sheet/DQ0pvUHh6b1hjcGpl")
         return
     result_set = music_aliases[name]
     if len(result_set) == 1:
@@ -290,8 +291,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         await find_song.finish(f"您要找的可能是以下歌曲中的其中一首：\n{ s }")
 
 
+#分数线
 query_score = on_command('分数线')
-
 
 @query_score.handle()
 async def _(bot: Bot, event: Event, state: T_State):
@@ -300,7 +301,7 @@ async def _(bot: Bot, event: Event, state: T_State):
     if len(argv) == 1 and argv[0] == '帮助':
             await query_score.send('''此功能为查找某首歌分数线设计。
     命令格式：分数线 <难度+歌曲id> <分数线>
-    例如：分数线 白sd337 100
+    例如：分数线 白337 100
     命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
     以下为 TAP GREAT 的对应表：
     GREAT/GOOD/MISS
