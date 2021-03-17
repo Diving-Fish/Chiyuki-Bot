@@ -18,48 +18,18 @@ from collections import defaultdict
 scheduler = require("nonebot_plugin_apscheduler").scheduler
 
 
-help_text = """桜千雪です、よろしく。
-可用命令如下：
-.help 输出此消息
-.jrrp 显示今天的人品值
-.bind <角色名称> 绑定角色
-.r/roll <掷骰表达式> 掷骰
-.rc/rollcheck <技能/属性> [值] 技能/属性检定
-.sc/sancheck <成功> <失败> 理智检定
-.stat/st <技能/属性> <add|sub|set> <值> [触发时间（小时）] 增加/减少/设置属性值，可设定触发时间
-.time <pass> [小时] 设置经过时间
-.query/q <玩家名/QQ> <技能/属性> 查询某玩家的某属性
-.intro/.i <玩家名> 查询此角色的基本信息
-.showall/.sa 获取当前玩家的所有信息（将私聊发送）
-.unbind 解绑角色
-车卡网址：https://www.diving-fish.com/coc_card
-要查看舞萌bot的有关帮助，请输入.help mai"""
-mai_help_text = """桜千雪です、よろしく。
-可用命令如下：
-今日舞萌 查看今天的舞萌运势
-XXXmaimaiXXX什么 随机一首歌
-随个[dx/标准][绿黄红紫白]<难度> 随机一首指定条件的乐曲
-[绿黄红紫白]<歌曲编号> 查询乐曲信息或谱面信息
-<歌曲别名>是什么歌 查询乐曲别名对应的乐曲
-定数查歌 <定数>  查询定数对应的乐曲
-定数查歌 <定数下限> <定数上限>
-分数线 <难度+歌曲id> <分数线> 详情请输入“分数线 帮助”查看"""
-
-
 help = on_command('help')
 
 
 @help.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     v = str(event.get_message()).strip()
+    help_text: dict = get_driver().config.help_text
     if v == "":
-        await help.finish('''.help coc \t查看跑团相关功能
-.help mai \t查看舞萌相关功能''')
-    elif v == "mai":
-        await help.finish(mai_help_text)
-    elif v == "coc":
-        await help.finish(help_text)
-
+        help_str = '\n'.join([f'.help {key}\t{help_text[key][0]}' for key in help_text])
+        await help.finish(help_str)
+    else:
+        await help.finish(help_text[v][1])
 
 jrrp = on_command('jrrp')
 
@@ -322,11 +292,25 @@ async def _(bot: Bot, event: Event, state: T_State):
         await random_person.finish("请在群聊使用")
 
 
+shuffle = on_command('shuffle')
+
+
+@shuffle.handle()
+async def _(bot: Bot, event: Event):
+    argv = int(str(event.get_message()))
+    if argv > 100:
+        await shuffle.finish('请输入100以内的数字')
+        return
+    d = [str(i + 1) for i in range(argv)]
+    random.shuffle(d)
+    await shuffle.finish(','.join(d))
+
+
 repeat = on_message(priority=99)
 
 
 @repeat.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    r = randint(1, 100)
-    if r <= 2:
+    r = random.random()
+    if r <= 0.0114514:
         await repeat.finish(event.get_message())

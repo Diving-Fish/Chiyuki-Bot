@@ -1,9 +1,11 @@
 from src.libraries.image import *
+from src.libraries.gosen_choyen import generate
 from nonebot import on_command, on_message, on_notice, on_regex
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.cqhttp import Message
 
+from src.libraries.img_template import img_template_parser, edit_base_img
 
 high_eq = on_regex('低情商.+高情商.+')
 
@@ -43,3 +45,39 @@ async def _(bot: Bot, event: Event, state: T_State):
             "file": f"{url}"
         }
     }]))
+
+
+gocho = on_command('gocho')
+
+
+@gocho.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    argv = str(event.get_message()).strip().split(' ')
+    if len(argv) != 2:
+        await jlpx.send("gocho 需要两个参数")
+    i = generate(argv[0], argv[1])
+    await gocho.send(Message([{
+        "type": "image",
+        "data": {
+            "file": f"base64://{str(image_to_base64(i), encoding='utf-8')}"
+        }
+    }]))
+
+
+img_template = on_command("img_template", aliases={"imgt"})
+
+
+@img_template.handle()
+async def _(bot: Bot, event: Event):
+    arg = event.get_message()
+    # try:
+    base, img = await img_template_parser(arg)
+    b64 = await edit_base_img(base, img)
+    await img_template.send(Message([{
+        "type": "image",
+        "data": {
+            "file": f"base64://{str(b64, encoding='utf-8')}"
+        }
+    }]))
+    # except Exception as e:
+    #     await img_template.send(str(e))

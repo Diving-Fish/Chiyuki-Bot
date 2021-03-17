@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from collections import defaultdict
 
 import nonebot
 from nonebot.adapters.cqhttp import Bot as CQHTTPBot
@@ -21,6 +22,7 @@ app = nonebot.get_asgi()
 
 driver = nonebot.get_driver()
 driver.register_adapter("cqhttp", CQHTTPBot)
+driver.config.help_text = {}
 
 
 nonebot.load_plugins("src/plugins")

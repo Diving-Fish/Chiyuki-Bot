@@ -2,7 +2,8 @@ import math
 from collections import defaultdict
 from typing import List, Dict, Any
 
-from nonebot import on_command, on_message, on_notice, on_regex
+from nonebot import on_command, on_message, on_notice, on_regex, get_driver
+from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.cqhttp import Message
@@ -16,8 +17,24 @@ import re
 from urllib import parse
 
 
-def random_music(data) -> dict:
-    return data[random.randrange(0, len(data))]
+driver = get_driver()
+
+
+@driver.on_startup
+def _():
+    logger.info("Load help text successfully")
+    help_text: dict = get_driver().config.help_text
+    help_text['mai'] = ('查看舞萌相关功能', """桜千雪です、よろしく。
+可用命令如下：
+今日舞萌 查看今天的舞萌运势
+XXXmaimaiXXX什么 随机一首歌
+随个[dx/标准][绿黄红紫白]<难度> 随机一首指定条件的乐曲
+查歌<乐曲标题的一部分> 查询符合条件的乐曲
+[绿黄红紫白]id<歌曲编号> 查询乐曲信息或谱面信息
+<歌曲别名>是什么歌 查询乐曲别名对应的乐曲
+定数查歌 <定数>  查询定数对应的乐曲
+定数查歌 <定数下限> <定数上限>
+分数线 <难度+歌曲id> <分数线> 详情请输入“分数线 帮助”查看""")
 
 
 def song_txt(music: Music):
@@ -281,17 +298,17 @@ async def _(bot: Bot, event: Event, state: T_State):
     r = "([绿黄红紫白])([0-9]+)"
     argv = str(event.get_message()).strip().split(" ")
     if len(argv) == 1 and argv[0] == '帮助':
-        await query_score.send('''此功能为查找某首歌分数线设计。
-命令格式：分数线 <难度+歌曲id> <分数线>
-例如：分数线 白sd337 100
-命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
-以下为 TAP GREAT 的对应表：
-GREAT/GOOD/MISS
-TAP\t1/2.5/5
-HOLD\t2/5/10
-SLIDE\t3/7.5/15
-TOUCH\t1/2.5/5
-BREAK\t5/12.5/25(外加200落)''')
+            await query_score.send('''此功能为查找某首歌分数线设计。
+    命令格式：分数线 <难度+歌曲id> <分数线>
+    例如：分数线 白sd337 100
+    命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
+    以下为 TAP GREAT 的对应表：
+    GREAT/GOOD/MISS
+    TAP\t1/2.5/5
+    HOLD\t2/5/10
+    SLIDE\t3/7.5/15
+    TOUCH\t1/2.5/5
+    BREAK\t5/12.5/25(外加200落)''')
     elif len(argv) == 2:
         try:
             grp = re.match(r, argv[0]).groups()
