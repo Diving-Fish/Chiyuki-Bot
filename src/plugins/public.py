@@ -221,6 +221,7 @@ async def _(bot: Bot, event: Event, state: T_State):
     pass
 
 
+'''
 random_person = on_regex("随个([男女]?)人")
 
 
@@ -283,7 +284,7 @@ async def _(bot: Bot, event: Event, state: T_State):
             }]))
     except AttributeError:
         await random_person.finish("请在群聊使用")
-
+'''
 
 shuffle = on_command('shuffle')
 
@@ -298,7 +299,7 @@ async def _(bot: Bot, event: Event):
     random.shuffle(d)
     await shuffle.finish(','.join(d))
 
-
+'''
 repeat = on_message(priority=99)
 
 
@@ -307,3 +308,28 @@ async def _(bot: Bot, event: Event, state: T_State):
     r = random.random()
     if r <= 0.0114514:
         await repeat.finish(event.get_message())
+'''
+
+taro_lst = []
+
+with open('src/static/taro.txt', encoding='utf-8') as f:
+    for line in f:
+        elem = line.strip().split('\t')
+        taro_lst.append(elem)
+
+
+taro = on_regex("溜冰塔罗牌")
+
+
+@taro.handle()
+async def _(bot: Bot, event: Event):
+    group_id = event.group_id
+    nickname = event.sender.nickname
+    if str(group_id) != "702156482":
+        return
+    c = randint(0, 10)
+    a = randint(0, 1)
+    s1 = "正位" if a == 0 else "逆位"
+    s2 = taro_lst[c][3 + a]
+    await taro.finish(f"来看看{ nickname }抽到了什么：\n{taro_lst[c][0]}（{taro_lst[c][1]}，{taro_lst[c][2]}）{s1}：\n{s2}")
+

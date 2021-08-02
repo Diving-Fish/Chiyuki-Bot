@@ -10,6 +10,8 @@ from nonebot.adapters.cqhttp import Message
 
 from src.libraries.tool import hash
 from src.libraries.maimaidx_music import *
+from src.libraries.image import *
+from src.libraries.maimai_best_40 import generate
 import requests
 import json
 import random
@@ -335,3 +337,29 @@ async def _(bot: Bot, event: Event, state: T_State):
 BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)''')
         except Exception:
             await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
+
+
+best_40_pic = on_command('b40')
+
+
+@best_40_pic.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    username = str(event.get_message()).strip()
+    if username == "":
+        payload = {'qq': str(event.get_user_id())}
+    else:
+        payload = {'username': username}
+    img, success = await generate(payload)
+    if success == 400:
+        await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
+    elif success == 403:
+        await best_40_pic.send("该用户禁止了其他人获取数据。")
+    else:
+        await best_40_pic.send(Message([
+            {
+                "type": "image",
+                "data": {
+                    "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
+                }
+            }
+        ]))

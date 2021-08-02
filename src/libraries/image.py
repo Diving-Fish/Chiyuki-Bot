@@ -25,9 +25,9 @@ def draw_text(img_pil, text, offset_x):
     draw.text((x + offset_x, 360), text, font=font, fill=(255, 255, 255, 255))
 
 
-def image_to_base64(img):
+def image_to_base64(img, format='PNG'):
     output_buffer = BytesIO()
-    img.save(output_buffer, format='PNG')
+    img.save(output_buffer, format)
     byte_data = output_buffer.getvalue()
     base64_str = base64.b64encode(byte_data)
     return base64_str

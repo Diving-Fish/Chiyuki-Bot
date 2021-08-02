@@ -146,7 +146,10 @@ class MusicList(List[Music]):
         return new_list
 
 
-total_list: MusicList = MusicList(requests.get("https://www.diving-fish.com/api/maimaidxprober/music_data").json())
+#with open('src/static/data.json', encoding='utf-8') as f:
+#    obj = json.load(f)
+obj = requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data').json()
+total_list: MusicList = MusicList(obj)
 for __i in range(len(total_list)):
     total_list[__i] = Music(total_list[__i])
     for __j in range(len(total_list[__i].charts)):
