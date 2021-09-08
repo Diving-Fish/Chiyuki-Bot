@@ -253,8 +253,11 @@ class DrawBest(object):
             chartInfo = dxBest[num]
             pngPath = self.cover_dir + f'{int(chartInfo.idNum)}.jpg'
             if not os.path.exists(pngPath):
+<<<<<<< HEAD
                 pngPath = self.cover_dir + f'{int(chartInfo.idNum)}.png'
             if not os.path.exists(pngPath):
+=======
+>>>>>>> bc13ecf26bfe312ee1c4a01f706cda70501ca260
                 pngPath = self.cover_dir + '1000.png'
             temp = Image.open(pngPath).convert('RGB')
             temp = self._resizePic(temp, itemW / temp.size[0])
@@ -311,7 +314,11 @@ class DrawBest(object):
         namePlateImg = Image.open(self.pic_dir + 'UI_TST_PlateMask.png').convert('RGBA')
         namePlateImg = namePlateImg.resize((285, 40))
         namePlateDraw = ImageDraw.Draw(namePlateImg)
+<<<<<<< HEAD
         font1 = ImageFont.truetype('src/static/msyh.ttc', 28, encoding='unic')
+=======
+        font1 = ImageFont.truetype('src/static/arial.ttf', 28, encoding='unic')
+>>>>>>> bc13ecf26bfe312ee1c4a01f706cda70501ca260
         namePlateDraw.text((12, 4), ' '.join(list(self.userName)), 'black', font1)
         nameDxImg = Image.open(self.pic_dir + 'UI_CMN_Name_DX.png').convert('RGBA')
         nameDxImg = self._resizePic(nameDxImg, 0.9)
@@ -388,12 +395,21 @@ def computeRa(ds: float, achievement:float) -> int:
     return math.floor(ds * (min(100.5, achievement) / 100) * baseRa)
 
 
+<<<<<<< HEAD
 async def generate(payload: Dict) -> (Optional[Image.Image], bool):
     async with aiohttp.request("POST", "https://www.diving-fish.com/api/maimaidxprober/query/player", json=payload) as resp:
         if resp.status == 400:
             return None, 400
         if resp.status == 403:
             return None, 403
+=======
+async def generate(username: str) -> (Optional[Image.Image], bool):
+    async with aiohttp.request("POST", "https://www.diving-fish.com/api/maimaidxprober/query/player", json={
+        "username": username
+    }) as resp:
+        if resp.status == 400:
+            return None, False
+>>>>>>> bc13ecf26bfe312ee1c4a01f706cda70501ca260
         sd_best = BestList(25)
         dx_best = BestList(15)
         obj = await resp.json()
@@ -403,5 +419,10 @@ async def generate(payload: Dict) -> (Optional[Image.Image], bool):
             sd_best.push(ChartInfo.from_json(c))
         for c in dx:
             dx_best.push(ChartInfo.from_json(c))
+<<<<<<< HEAD
         pic = DrawBest(sd_best, dx_best, obj["nickname"], obj["rating"] + obj["additional_rating"], obj["rating"]).getDir()
         return pic, 0
+=======
+        pic = DrawBest(sd_best, dx_best, obj["username"], obj["rating"] + 2100, obj["rating"]).getDir()
+        return pic, True
+>>>>>>> bc13ecf26bfe312ee1c4a01f706cda70501ca260

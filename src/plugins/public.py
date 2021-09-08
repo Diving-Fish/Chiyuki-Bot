@@ -92,8 +92,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         if v == "disabled":
             await poke.finish()
             return
-    r = randint(1, 14)
-    if r == 1 or v == "limited":
+    r = randint(1, 20)
+    if v == "limited":
         await poke.send(Message([{
             "type": "poke",
             "data": {
@@ -136,8 +136,15 @@ async def _(bot: Bot, event: Event, state: T_State):
                 "file": f"https://www.diving-fish.com/images/poke/{r - 7}.jpg",
             }
         }]))
-    else:
+    elif r == 1:
         await poke.send(Message('戳你妈'))
+    else:
+        await poke.send(Message([{
+            "type": "poke",
+            "data": {
+                "qq": f"{event.sender_id}"
+            }
+        }]))
 
 
 async def send_poke_stat(group_id: int, bot: Bot):
