@@ -2,7 +2,7 @@
 import asyncio
 import os
 import math
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 import aiohttp
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -388,7 +388,7 @@ def computeRa(ds: float, achievement:float) -> int:
     return math.floor(ds * (min(100.5, achievement) / 100) * baseRa)
 
 
-async def generate(payload: Dict) -> (Optional[Image.Image], bool):
+async def generate(payload: Dict) -> Tuple[Optional[Image.Image], bool]:
     async with aiohttp.request("POST", "https://www.diving-fish.com/api/maimaidxprober/query/player", json=payload) as resp:
         if resp.status == 400:
             return None, 400

@@ -4,9 +4,11 @@ from typing import List, Dict, Any
 
 from nonebot import on_command, on_message, on_notice, on_regex, get_driver
 from nonebot.log import logger
+from nonebot.permission import Permission
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot
-from nonebot.adapters.cqhttp import Message
+from nonebot.adapters.cqhttp import Message, MessageSegment, GroupMessageEvent, PrivateMessageEvent
+from src.libraries.maimaidx_guess import GuessObject
 
 from src.libraries.tool import hash
 from src.libraries.maimaidx_music import *
@@ -352,6 +354,7 @@ best_40_pic = on_command('b40')
 @best_40_pic.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     username = str(event.get_message()).strip()
+    print(event.message_id)
     if username == "":
         payload = {'qq': str(event.get_user_id())}
     else:
@@ -363,10 +366,119 @@ async def _(bot: Bot, event: Event, state: T_State):
         await best_40_pic.send("该用户禁止了其他人获取数据。")
     else:
         await best_40_pic.send(Message([
-            {
-                "type": "image",
-                "data": {
-                    "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
-                }
-            }
+            MessageSegment.reply(event.message_id),
+            MessageSegment.image(f"base64://{str(image_to_base64(img), encoding='utf-8')}")
+        ]))
+
+
+
+disable_guess_music = on_command('猜歌设置', priority=0)
+
+
+@disable_guess_music.handle()
+async def _(bot: Bot, event: Event):
+    if event.message_type != "group":
+        return
+    arg = str(event.get_message())
+    group_members = await bot.get_group_member_list(group_id=event.group_id)
+    for m in group_members:
+        if m['user_id'] == event.user_id:
+            break
+    su = get_driver().config.superusers
+    if m['role'] != 'owner' and m['role'] != 'admin' and str(m['user_id']) not in su:
+        await disable_guess_music.finish("只有管理员可以设置猜歌")
+        return
+    db = get_driver().config.db
+    c = await db.cursor()
+    if arg == '启用':
+        await c.execute(f'update guess_table set enabled=1 where group_id={event.group_id}')
+    elif arg == '禁用':
+        await c.execute(f'update guess_table set enabled=0 where group_id={event.group_id}')
+    else:
+        await disable_guess_music.finish("请输入 猜歌设置 启用/禁用")
+    await db.commit()
+    await disable_guess_music.finish("设置成功")
+
+
+guess_dict: Dict[Tuple[str, str], GuessObject] = {}
+guess_music = on_command('猜歌', priority=0)
+
+
+async def guess_music_loop(bot: Bot, event: Event, state: T_State):
+    await asyncio.sleep(5)
+    guess: GuessObject = state["guess_object"]
+    if guess.is_end:
+        return
+    cycle = state["cycle"]
+    if cycle < 6:
+        await bot.send(event, f"{cycle + 1}/7 这首歌" + guess.guess_options[cycle])
+    else:
+        await bot.send(event, Message([
+            MessageSegment.text("7/7 这首歌封面的一部分是："),
+            MessageSegment.image("base64://" + str(guess.b64image, encoding="utf-8")),
+            MessageSegment.text("答案将在 30 秒后揭晓")
+        ]))
+        await give_answer(bot, event, state)
+        return
+    state["cycle"] += 1
+    await guess_music_loop(bot, event, state)
+
+
+async def give_answer(bot: Bot, event: Event, state: T_State):
+    await asyncio.sleep(30)
+    guess: GuessObject = state["guess_object"]
+    if guess.is_end:
+        return
+    await bot.send(event, Message([MessageSegment.text("答案是：" + f"{guess.music['id']}. {guess.music['title']}\n"), MessageSegment.image(f"https://www.diving-fish.com/covers/{guess.music['id']}.jpg")]))
+    del guess_dict[state["k"]]
+
+
+@guess_music.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    mt = event.message_type
+    k = (mt, event.user_id if mt == "private" else event.group_id)
+    if mt == "group":
+        gid = event.group_id
+        db = get_driver().config.db
+        c = await db.cursor()
+    await c.execute(f"select * from guess_table where group_id={gid}")
+    data = await c.fetchone()
+    if data is None:
+        await c.execute(f'insert into guess_table values ({gid}, 1)')
+    elif data[1] == 0:
+        await guess_music.send("本群已禁用猜歌")
+        return
+    if k in guess_dict:
+        await guess_music.send("当前已有正在进行的猜歌")
+        return
+    guess = GuessObject()
+    guess_dict[k] = guess
+    state["k"] = k
+    state["guess_object"] = guess
+    state["cycle"] = 0
+    await guess_music.send("我将从热门乐曲中选择一首歌，并描述它的一些特征，请输入歌曲的 id 进行猜歌（DX乐谱和标准乐谱视为两首歌）。猜歌时查歌等其他命令依然可用。\n警告：这个命令可能会很刷屏，管理员可以使用【猜歌设置】指令进行设置。")
+    asyncio.create_task(guess_music_loop(bot, event, state))
+
+
+guess_music_solve = on_message(priority=20)
+
+
+@guess_music_solve.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    mt = event.message_type
+    k = (mt, event.user_id if mt == "private" else event.group_id)
+    if mt == "private":
+        print(k)
+    if k not in guess_dict:
+        return
+    ans = str(event.get_message())
+    guess = guess_dict[k]
+    # await guess_music_solve.send(ans + "|" + guess.music['id'])
+    if ans == guess.music['id']:
+        guess.is_end = True
+        del guess_dict[k]
+        await guess_music_solve.finish(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("猜对了，答案是：" + f"{guess.music['id']}. {guess.music['title']}\n"),
+            MessageSegment.image(f"https://www.diving-fish.com/covers/{guess.music['id']}.jpg")
         ]))
