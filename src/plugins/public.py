@@ -8,7 +8,7 @@ from nonebot.adapters.cqhttp import Message, Event, Bot
 from random import randint
 import asyncio
 
-from src.libraries.image import image_to_base64, path, draw_text, get_jlpx
+from src.libraries.image import image_to_base64, path, draw_text, get_jlpx, text_to_image
 from src.libraries.tool import hash
 
 import time
@@ -29,7 +29,12 @@ async def _(bot: Bot, event: Event, state: T_State):
         help_str = '\n'.join([f'.help {key}\t{help_text[key][0]}' for key in help_text])
         await help.finish(help_str)
     else:
-        await help.finish(help_text[v][1])
+        await help.finish(Message([{
+            "type": "image",
+            "data": {
+                "file": f"base64://{str(image_to_base64(text_to_image(help_text[v][1])), encoding='utf-8')}"
+            }
+        }]))
 
 jrrp = on_command('jrrp')
 

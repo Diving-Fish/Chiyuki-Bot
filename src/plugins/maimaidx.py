@@ -293,24 +293,31 @@ async def _(bot: Bot, event: Event, state: T_State):
 
 
 query_score = on_command('分数线')
+query_score_text = '''此功能为查找某首歌分数线设计。
+命令格式：分数线 <难度+歌曲id> <分数线>
+例如：分数线 白sd337 100
+命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
+以下为 TAP GREAT 的对应表：
+GREAT/GOOD/MISS
+TAP\t1/2.5/5
+HOLD\t2/5/10
+SLIDE\t3/7.5/15
+TOUCH\t1/2.5/5
+BREAK\t5/12.5/25(外加200落)'''
+query_score_mes = Message([{
+    "type": "image",
+    "data": {
+        "file": f"base64://{str(image_to_base64(text_to_image(query_score_text)), encoding='utf-8')}"
+    }
+}])
 
 
 @query_score.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    r = "([绿黄红紫白])([0-9]+)"
+    r = "([绿黄红紫白])(id)?([0-9]+)"
     argv = str(event.get_message()).strip().split(" ")
     if len(argv) == 1 and argv[0] == '帮助':
-            await query_score.send('''此功能为查找某首歌分数线设计。
-    命令格式：分数线 <难度+歌曲id> <分数线>
-    例如：分数线 白sd337 100
-    命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
-    以下为 TAP GREAT 的对应表：
-    GREAT/GOOD/MISS
-    TAP\t1/2.5/5
-    HOLD\t2/5/10
-    SLIDE\t3/7.5/15
-    TOUCH\t1/2.5/5
-    BREAK\t5/12.5/25(外加200落)''')
+        await query_score.send(query_score_mes)
     elif len(argv) == 2:
         try:
             grp = re.match(r, argv[0]).groups()
