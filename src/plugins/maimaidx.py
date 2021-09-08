@@ -441,16 +441,16 @@ async def _(bot: Bot, event: Event, state: T_State):
         gid = event.group_id
         db = get_driver().config.db
         c = await db.cursor()
-    await c.execute(f"select * from guess_table where group_id={gid}")
-    data = await c.fetchone()
-    if data is None:
-        await c.execute(f'insert into guess_table values ({gid}, 1)')
-    elif data[1] == 0:
-        await guess_music.send("本群已禁用猜歌")
-        return
-    if k in guess_dict:
-        await guess_music.send("当前已有正在进行的猜歌")
-        return
+        await c.execute(f"select * from guess_table where group_id={gid}")
+        data = await c.fetchone()
+        if data is None:
+            await c.execute(f'insert into guess_table values ({gid}, 1)')
+        elif data[1] == 0:
+            await guess_music.send("本群已禁用猜歌")
+            return
+        if k in guess_dict:
+            await guess_music.send("当前已有正在进行的猜歌")
+            return
     guess = GuessObject()
     guess_dict[k] = guess
     state["k"] = k
