@@ -17,6 +17,7 @@ from src.libraries.maimai_best_40 import generate
 import requests
 import json
 import random
+import time
 import re
 from urllib import parse
 
@@ -245,7 +246,8 @@ jrwm = on_command('今日舞萌', aliases={'今日mai'})
 @jrwm.handle()
 async def _(bot: Bot, event: Event, state: T_State):
     qq = int(event.get_user_id())
-    h = hash(qq)
+    h2 = hash(qq)
+    h = h2
     rp = h % 100
     wm_value = []
     for i in range(11):
@@ -258,7 +260,7 @@ async def _(bot: Bot, event: Event, state: T_State):
         elif wm_value[i] == 0:
             s += f'忌 {wm_list[i]}\n'
     s += "千雪提醒您：打机时不要大力拍打或滑动哦\n今日推荐歌曲："
-    music = total_list[h % len(total_list)]
+    music = total_list[h2 % len(total_list)]
     await jrwm.finish(Message([
         {"type": "text", "data": {"text": s}}
     ] + song_txt(music)))
@@ -297,15 +299,15 @@ async def _(bot: Bot, event: Event, state: T_State):
 query_score = on_command('分数线')
 query_score_text = '''此功能为查找某首歌分数线设计。
 命令格式：分数线 <难度+歌曲id> <分数线>
-例如：分数线 白sd337 100
+例如：分数线 白337 100
 命令将返回分数线允许的 TAP GREAT 容错以及 BREAK 50落等价的 TAP GREAT 数。
 以下为 TAP GREAT 的对应表：
 GREAT/GOOD/MISS
-TAP\t1/2.5/5
-HOLD\t2/5/10
-SLIDE\t3/7.5/15
-TOUCH\t1/2.5/5
-BREAK\t5/12.5/25(外加200落)'''
+TAP    1/2.5/5
+HOLD   2/5/10
+SLIDE  3/7.5/15
+TOUCH  1/2.5/5
+BREAK  5/12.5/25(外加200落)'''
 query_score_mes = Message([{
     "type": "image",
     "data": {
@@ -316,7 +318,7 @@ query_score_mes = Message([{
 
 @query_score.handle()
 async def _(bot: Bot, event: Event, state: T_State):
-    r = "([绿黄红紫白])(id)?([0-9]+)"
+    r = "([绿黄红紫白])(?:id)?([0-9]+)"
     argv = str(event.get_message()).strip().split(" ")
     if len(argv) == 1 and argv[0] == '帮助':
         await query_score.send(query_score_mes)
@@ -342,10 +344,10 @@ async def _(bot: Bot, event: Event, state: T_State):
             if reduce <= 0 or reduce >= 101:
                 raise ValueError
             await query_chart.send(f'''{music['title']} {level_labels2[level_index]}
-分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f}(每个-{10000 / total_score:.4f}%),
-BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)''')
+    分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f}(每个-{10000 / total_score:.4f}%),
+    BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)''')
         except Exception:
-            await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
+            await query_chart.send("格式错误或未找到乐曲，输入“分数线 帮助”以查看帮助信息")
 
 
 best_40_pic = on_command('b40')
@@ -401,27 +403,28 @@ async def _(bot: Bot, event: Event):
 
 
 guess_dict: Dict[Tuple[str, str], GuessObject] = {}
+guess_cd_dict: Dict[Tuple[str, str], float] = {}
 guess_music = on_command('猜歌', priority=0)
 
 
 async def guess_music_loop(bot: Bot, event: Event, state: T_State):
-    await asyncio.sleep(5)
+    await asyncio.sleep(10)
     guess: GuessObject = state["guess_object"]
     if guess.is_end:
         return
     cycle = state["cycle"]
     if cycle < 6:
-        await bot.send(event, f"{cycle + 1}/7 这首歌" + guess.guess_options[cycle])
+        asyncio.create_task(bot.send(event, f"{cycle + 1}/7 这首歌" + guess.guess_options[cycle]))
     else:
-        await bot.send(event, Message([
+        asyncio.create_task(bot.send(event, Message([
             MessageSegment.text("7/7 这首歌封面的一部分是："),
             MessageSegment.image("base64://" + str(guess.b64image, encoding="utf-8")),
             MessageSegment.text("答案将在 30 秒后揭晓")
-        ]))
-        await give_answer(bot, event, state)
+        ])))
+        asyncio.create_task(give_answer(bot, event, state))
         return
     state["cycle"] += 1
-    await guess_music_loop(bot, event, state)
+    asyncio.create_task(guess_music_loop(bot, event, state))
 
 
 async def give_answer(bot: Bot, event: Event, state: T_State):
@@ -429,7 +432,7 @@ async def give_answer(bot: Bot, event: Event, state: T_State):
     guess: GuessObject = state["guess_object"]
     if guess.is_end:
         return
-    await bot.send(event, Message([MessageSegment.text("答案是：" + f"{guess.music['id']}. {guess.music['title']}\n"), MessageSegment.image(f"https://www.diving-fish.com/covers/{guess.music['id']}.jpg")]))
+    asyncio.create_task(bot.send(event, Message([MessageSegment.text("答案是：" + f"{guess.music['id']}. {guess.music['title']}\n"), MessageSegment.image(f"https://www.diving-fish.com/covers/{guess.music['id']}.jpg")])))
     del guess_dict[state["k"]]
 
 
@@ -449,14 +452,27 @@ async def _(bot: Bot, event: Event, state: T_State):
             await guess_music.send("本群已禁用猜歌")
             return
         if k in guess_dict:
-            await guess_music.send("当前已有正在进行的猜歌")
+            if k in guess_cd_dict and time.time() > guess_cd_dict[k] - 400:
+                # 如果已经过了 200 秒则自动结束上一次
+                del guess_dict[k]
+            else:
+                await guess_music.send("当前已有正在进行的猜歌")
+                return
+    whitelists = get_driver().config.whitelists
+    if not (mt == "group" and gid in whitelists):
+        if len(guess_dict) >= 5:
+            await guess_music.finish("千雪有点忙不过来了。现在正在猜的群有点多，晚点再试试如何？")
+            return
+        if k in guess_cd_dict and time.time() < guess_cd_dict[k]:
+            await guess_music.finish(f"已经猜过啦，下次猜歌会在 {time.strftime('%H:%M', time.localtime(guess_cd_dict[k]))} 可用噢")
             return
     guess = GuessObject()
     guess_dict[k] = guess
     state["k"] = k
     state["guess_object"] = guess
     state["cycle"] = 0
-    await guess_music.send("我将从热门乐曲中选择一首歌，并描述它的一些特征，请输入歌曲的 id 进行猜歌（DX乐谱和标准乐谱视为两首歌）。猜歌时查歌等其他命令依然可用。\n警告：这个命令可能会很刷屏，管理员可以使用【猜歌设置】指令进行设置。")
+    guess_cd_dict[k] = time.time() + 600
+    await guess_music.send("我将从热门乐曲中选择一首歌，并描述它的一些特征，请输入歌曲的【id】、【歌曲标题】或【歌曲标题中 5 个以上连续的字符】进行猜歌（DX乐谱和标准乐谱视为两首歌）。猜歌时查歌等其他命令依然可用。\n警告：这个命令可能会很刷屏，管理员可以使用【猜歌设置】指令进行设置。")
     asyncio.create_task(guess_music_loop(bot, event, state))
 
 
@@ -467,14 +483,12 @@ guess_music_solve = on_message(priority=20)
 async def _(bot: Bot, event: Event, state: T_State):
     mt = event.message_type
     k = (mt, event.user_id if mt == "private" else event.group_id)
-    if mt == "private":
-        print(k)
     if k not in guess_dict:
         return
     ans = str(event.get_message())
     guess = guess_dict[k]
     # await guess_music_solve.send(ans + "|" + guess.music['id'])
-    if ans == guess.music['id']:
+    if ans == guess.music['id'] or (ans.lower() == guess.music['title'].lower()) or (len(ans) >= 5 and ans.lower() in guess.music['title'].lower()):
         guess.is_end = True
         del guess_dict[k]
         await guess_music_solve.finish(Message([
