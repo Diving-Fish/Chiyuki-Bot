@@ -147,5 +147,7 @@ dmypy.json
 
 .idea
 chiyuki.db
+src/plugins/alter_b40.py
+src/libraries/wmdxapi.py
 
 # End of https://www.toptal.com/developers/gitignore/api/python

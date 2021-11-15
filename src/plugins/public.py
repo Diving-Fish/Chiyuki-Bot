@@ -3,6 +3,8 @@ import re
 
 from PIL import Image
 from nonebot import on_command, on_message, on_notice, require, get_driver, on_regex
+from nonebot.message import event_preprocessor, run_preprocessor
+from nonebot.exception import FinishedException, IgnoredException
 from nonebot.typing import T_State
 from nonebot.adapters.cqhttp import Message, Event, Bot
 from random import randint
@@ -16,6 +18,15 @@ from collections import defaultdict
 
 
 scheduler = require("nonebot_plugin_apscheduler").scheduler
+
+
+@event_preprocessor
+async def preprocessor(bot, event, state):
+    wl = get_driver().config.message_whitelists
+    if len(wl) > 0 and hasattr(event, 'message_type') and event.message_type == "group":
+        gid = event.group_id
+        if gid not in get_driver().config.message_whitelists:
+            raise IgnoredException("reason")
 
 
 help = on_command('help')
@@ -41,6 +52,7 @@ jrrp = on_command('jrrp')
 
 @jrrp.handle()
 async def _(bot: Bot, event: Event, state: dict):
+    print(await bot.get_group_list())
     qq = int(event.get_user_id())
     h = hash(qq)
     rp = h % 100

@@ -127,7 +127,7 @@ def red_text(text):
     red_fill_vcg.add_color_stop(0.51, (240, 0, 0))
     red_fill_vcg.add_color_stop(1, (5, 0, 0))
     im = vcg_text(text, red_fill_vcg, 0, 20)
-    im = im.transform(im.size, Image.AFFINE, (1, 0, 0, 0, 1, 2))
+    im = im.transform(im.size, Image.AFFINE, (1, 0, 4, 0, 1, 8))
 
     uv7 = VerticalColorGradient()
     uv7.add_color_stop(0, (230, 0, 0))
@@ -135,7 +135,7 @@ def red_text(text):
     uv7.add_color_stop(0.51, (240, 0, 0))
     uv7.add_color_stop(1, (5, 0, 0))
     i7 = vcg_text(text, red_fill_vcg, 1, 20)
-    i7 = i7.transform(i7.size, Image.AFFINE, (1, 0, 0, 0, 1, 2))
+    i7 = i7.transform(i7.size, Image.AFFINE, (1, 0, 4, 0, 1, 8))
 
     l = [i2, i3, i4, i5, i6, im, i7]
     for elem in l:
@@ -170,6 +170,7 @@ def sliver_text(text):
     uv4 = VerticalColorGradient()
     uv4.add_color_stop(0, (221, 221, 221))
     i4 = vcg_text(text, uv4, stroke_width=7, offset=20)
+    i4 = i4.transform(i4.size, Image.AFFINE, (1, 0, 0, 0, 1, 0))
 
     uv5 = VerticalColorGradient()
     uv5.add_color_stop(0, (16,25,58))
@@ -188,7 +189,7 @@ def sliver_text(text):
     uv6.add_color_stop(0.52, (196,215,222))
     uv6.add_color_stop(1.0, (255,255,255))
     i6 = vcg_text(text, uv6, offset=20)
-    i6 = i6.transform(i6.size, Image.AFFINE, (1, 0, 0, 0, 1, 0))
+    i6 = i6.transform(i6.size, Image.AFFINE, (1, 0, 6, 0, 1, 8))
 
     l = [i2, i3, i4, i5, i6]
     for elem in l:
@@ -207,4 +208,3 @@ def generate(red, sliver, offset=-1):
     i.paste(r, box=(0, 0), mask=r.split()[3])
     i.paste(s, box=(offset, r.size[1]), mask=s.split()[3])
     return i
-
