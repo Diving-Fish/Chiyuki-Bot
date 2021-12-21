@@ -1,5 +1,6 @@
 import random
 import re
+import aiohttp
 
 from PIL import Image
 from nonebot import on_command, on_message, on_notice, require, get_driver, on_regex
@@ -243,6 +244,25 @@ async def _(bot: Bot, event: Event, state: T_State):
     except (IndexError, ValueError):
         await poke_setting.finish("命令格式：\n戳一戳设置 默认   将启用默认的戳一戳设定\n戳一戳设置 限制 <秒>   在戳完一次bot的指定时间内，调用戳一戳只会让bot反过来戳你\n戳一戳设置 禁用   将禁用戳一戳的相关功能")
     pass
+
+
+ingredients = on_command("成分查询")
+
+
+@ingredients.handle()
+async def _(bot: Bot, event: Event, state: T_State):
+    arg = str(event.get_message()).strip().split(' ')
+    if len(arg) != 1:
+        await ingredients.finish("用法：成分查询 <Bilibili uid或用户名>")
+    v = arg[0]
+    async with aiohttp.request("GET", "https://api.asoulfan.com/cfj/", params={"name": v}) as resp:
+        try:
+            data = (await resp.json())["data"]["list"]
+            v_str = ','.join(list(map(lambda x: x["uname"], data)))
+            await ingredients.finish(f"{v}关注的VUP有：{v_str}")
+        except KeyError:
+            await ingredients.finish(f"API 暂不可用，请稍后再试")
+        
 
 
 '''
