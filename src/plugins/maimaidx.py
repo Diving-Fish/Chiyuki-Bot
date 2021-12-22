@@ -391,12 +391,8 @@ async def _(bot: Bot, event: Event, state: T_State):
         await best_50_pic.send("该用户禁止了其他人获取数据。")
     else:
         await best_50_pic.send(Message([
-            {
-                "type": "image",
-                "data": {
-                    "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
-                }
-            }
+            MessageSegment.reply(event.message_id),
+            MessageSegment.image(f"base64://{str(image_to_base64(img), encoding='utf-8')}")
         ])) 
 
 
