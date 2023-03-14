@@ -5,7 +5,7 @@ from PIL import ImageFont, ImageDraw, Image
 
 
 path = 'src/static/high_eq_image.png'
-fontpath = "src/static/msyh.ttc"
+fontpath = "src/static/poke/LXGWWenKai-Regular.ttf"
 
 
 def draw_text(img_pil, text, offset_x):

@@ -3,12 +3,37 @@ from nonebot.params import CommandArg, EventMessage
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 
+from src.data_access.plugin_manager import plugin_manager
 from src.libraries.tool import hash
 from src.libraries.maimaidx_music import *
 from src.libraries.image import *
 from src.libraries.maimai_best_40 import generate
 from src.libraries.maimai_best_50 import generate50
 import re
+
+
+__plugin_meta = {
+    "name": "舞萌",
+    "enable": True,
+    "help_text": """可用命令如下：
+今日舞萌 查看今天的舞萌运势
+XXXmaimaiXXX什么 随机一首歌
+随个[dx/标准][绿黄红紫白]<难度> 随机一首指定条件的乐曲
+查歌<乐曲标题的一部分> 查询符合条件的乐曲
+[绿黄红紫白]id<歌曲编号> 查询乐曲信息或谱面信息
+<歌曲别名>是什么歌 查询乐曲别名对应的乐曲
+定数查歌 <定数>  查询定数对应的乐曲
+定数查歌 <定数下限> <定数上限>
+分数线 <难度+歌曲id> <分数线> 详情请输入“分数线 帮助”查看""",
+}
+
+plugin_manager.register_plugin(__plugin_meta)
+
+async def __group_checker(event: Event):
+    if not hasattr(event, 'group_id'):
+        return True
+    else:
+        return plugin_manager.get_enable(event.group_id, __plugin_meta["name"])
 
 
 def song_txt(music: Music):
@@ -38,7 +63,7 @@ def inner_level_q(ds1, ds2=None):
     return result_set
 
 
-inner_level = on_command('inner_level ', aliases={'定数查歌 '})
+inner_level = on_command('inner_level ', aliases={'定数查歌 '}, rule=__group_checker)
 
 
 @inner_level.handle()
@@ -60,7 +85,7 @@ async def _(event: Event, message: Message = CommandArg()):
     await inner_level.finish(s.strip())
 
 
-spec_rand = on_regex(r"^随个(?:dx|sd|标准)?[绿黄红紫白]?[0-9]+\+?")
+spec_rand = on_regex(r"^随个(?:dx|sd|标准)?[绿黄红紫白]?[0-9]+\+?", rule=__group_checker)
 
 
 @spec_rand.handle()
@@ -90,7 +115,7 @@ async def _(event: Event, message: Message = EventMessage()):
         await spec_rand.finish("随机命令错误，请检查语法")
 
 
-mr = on_regex(r".*maimai.*什么")
+mr = on_regex(r".*maimai.*什么", rule=__group_checker)
 
 
 @mr.handle()
@@ -98,7 +123,7 @@ async def _():
     await mr.finish(song_txt(total_list.random()))
 
 
-search_music = on_regex(r"^查歌.+")
+search_music = on_regex(r"^查歌.+", rule=__group_checker)
 
 
 @search_music.handle()
@@ -122,7 +147,7 @@ async def _(event: Event, message: Message = EventMessage()):
         await search_music.send(f"结果过多（{len(res)} 条），请缩小查询范围。")
 
 
-query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
+query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)", rule=__group_checker)
 
 
 @query_chart.handle()
@@ -191,7 +216,7 @@ BREAK: {chart['notes'][4]}
 wm_list = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
 
 
-jrwm = on_command('今日舞萌', aliases={'今日mai'})
+jrwm = on_command('今日舞萌', aliases={'今日mai'}, rule=__group_checker)
 
 
 @jrwm.handle()
@@ -213,7 +238,7 @@ async def _(event: Event, message: Message = CommandArg()):
     music = total_list[h % len(total_list)]
     await jrwm.finish(Message([MessageSegment("text", {"text": s})] + song_txt(music)))
 
-query_score = on_command('分数线')
+query_score = on_command('分数线', rule=__group_checker)
 
 
 @query_score.handle()
@@ -265,7 +290,7 @@ BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT
             await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
-best_40_pic = on_command('b40')
+best_40_pic = on_command('b40', rule=__group_checker)
 
 
 @best_40_pic.handle()
@@ -287,7 +312,7 @@ async def _(event: Event, message: Message = CommandArg()):
             })
         ]))
 
-best_50_pic = on_command('b50')
+best_50_pic = on_command('b50', rule=__group_checker)
 
 
 @best_50_pic.handle()

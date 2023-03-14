@@ -3,3 +3,5 @@ src/static
 .code
 venv
 __pycache__
+official_config.json
+*.log
