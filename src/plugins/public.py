@@ -56,13 +56,27 @@ help = on_command('help')
 
 
 @help.handle()
-async def _(bot: Bot, event: Event, state: T_State):
-    help_str = ''''''
-    await help.send(Message([
-        MessageSegment("image", {
-            "file": f"base64://{str(image_to_base64(text_to_image(help_str)), encoding='utf-8')}"
-        })
-    ]))
+async def _(bot: Bot, event: Event, state: T_State, message: Message = CommandArg()):
+    arg = str(message).strip()
+    if arg == '':
+        s = '可用插件帮助列表：'
+        for name, value in plugin_manager.get_all(event.group_id).items():
+            if value:
+                s += f'\nhelp {name}'
+        await help.send(s)
+        return
+
+    try:
+        if not plugin_manager.get_enable(event.group_id, arg):
+            raise Exception("插件已禁用")
+        meta = plugin_manager.metadata[arg]
+        await help.send(Message([
+            MessageSegment("image", {
+                "file": f"base64://{str(image_to_base64(text_to_image(meta['help_text'])), encoding='utf-8')}"
+            })
+        ]))
+    except Exception:
+        await help.send("未找到插件或插件未启用")
 
 
 async def _group_poke(bot: Bot, event: Event) -> bool:
