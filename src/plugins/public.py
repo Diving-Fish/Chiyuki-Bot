@@ -148,3 +148,17 @@ async def _(bot: Bot, message: Message = CommandArg()):
         await is_alive.finish("我在")
 
 
+shuffle = on_command('shuffle', rule=__group_checker)
+
+@shuffle.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    try:
+        num = int(str(message).strip())
+    except Exception:
+        await shuffle.send("Usage: shuffle <number>")
+    if num > 100:
+        await shuffle.send("number should be lower than 100")
+    else:
+        a = list(range(1, num + 1))
+        random.shuffle(a)
+        await shuffle.send(', '.join([str(b) for b in a]))

@@ -92,6 +92,11 @@ class AutoNaga:
             async with session.get(f"{BASE_URL}/order_report_list") as resp:
                 return json.loads(await resp.text())
             
+    async def get_tenhou_custom_url(self, custom_no, index):
+        index_data = DictRedisData('majsoul_convert_index_map')
+        cache_data = DictRedisData(index_data.data[str(custom_no)])
+        return cache_data.data['message'][index]
+    
     async def find_paipu(self, custom: bool, data: str) -> (int, str, str): # code, link, message
         # data will be a time format if custom, or a tenhou url
         if custom:

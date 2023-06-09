@@ -20,7 +20,7 @@ set_naga_secret(get_driver().config.auto_naga_secret)
 __plugin_meta = {
     "name": "NAGA",
     "enable": False,
-    "help_text": "ms2th <雀魂牌谱链接>\nnaga解析 <雀魂牌谱编号> <小局编号>\nnaga解析 <天凤牌谱链接>\nnp查询"
+    "help_text": "ms2th <雀魂牌谱链接>\nnaga解析 <雀魂牌谱编号> <小局编号>\nnaga解析 <天凤牌谱链接>\nnp查询\nthurl <自定义牌谱编号> <小局编号>"
 }
 
 plugin_manager.register_plugin(__plugin_meta)
@@ -35,11 +35,13 @@ async def __group_checker(event: Event):
 tbl = ['东 1 局','东 2 局','东 3 局','东 4 局','南 1 局','南 2 局','南 3 局','南 4 局','西 1 局','西 2 局','西 3 局','西 4 局']
 
 
-ms2th = on_command('ms2th')
+ms2th = on_command('ms2th', aliases={'雀魂牌譜:', '雀魂牌谱:'})
 
 @ms2th.handle()
 async def _(event: Event, message: Message = CommandArg()):
     await ms2th.send(f"正在转换雀魂牌谱，可能需要一定时间，请耐心等待……")
+    # data = await auto_naga.convert_majsoul(str(message).split('_')[0]) # 有消息称会封号，排除掉玩家视角的 URL 信息
+    print(message)
     data = await auto_naga.convert_majsoul(str(message))
     if data['status'] != 200:
         await ms2th.send(data['message'])
@@ -47,7 +49,13 @@ async def _(event: Event, message: Message = CommandArg()):
     lst = []
     for i, log in enumerate(data['message']):
         lst.append(f"{i} - {tbl[log['log'][0][0][0]]} {log['log'][0][0][1]} 本场")
-    await ms2th.send(f"牌谱编号{data['index']}\n{log['title'][0]} {log['title'][1]}\n{' '.join(log['name'])}\n" + '\n'.join(lst) + f"\n请输入 naga解析 {data['index']} 0 以解析某小局或\nnaga解析 {data['index']} 0-{i} 来解析所有对局")
+    txt = f"牌谱编号{data['index']}\n{log['title'][0]} {log['title'][1]}\n{' '.join(log['name'])}\n" + '\n'.join(lst)
+    await ms2th.send(Message([
+            MessageSegment("image", {
+                "file": f"base64://{str(image_to_base64(text_to_image(txt)), encoding='utf-8')}"
+            })
+        ]))
+    await ms2th.send(f"请输入 naga解析 {data['index']} 0 以解析某小局或\nnaga解析 {data['index']} 0-{i} 来解析所有对局")
 
 
 naga_account = on_command('np查询')
@@ -120,6 +128,8 @@ async def _(event: Event, message: Message = CommandArg()):
                 return
             data = await auto_naga.order(True, haihus)
             if data['status'] in [400, 405]:
+                with open('naga_error.txt', 'a') as fw:
+                    fw.write(json.dumps(data, ensure_ascii=False) + '\n')
                 await naga.send('自定义牌谱解析失败，请检查牌谱链接是否正确')
                 return
             else:
@@ -128,8 +138,8 @@ async def _(event: Event, message: Message = CommandArg()):
         else:
             raise Exception()    
     except Exception as e:
-        raise e
         await naga.send('Usage:\nnaga解析 <雀魂牌谱编号> <小局编号>\nnaga解析 <天凤牌谱链接>')
+        raise e
         return
 
     timeout = 0
@@ -146,3 +156,16 @@ async def _(event: Event, message: Message = CommandArg()):
 
     await naga.send('解析超时，请稍后重试')
     return
+
+
+custom_th_url = on_command('thurl')
+
+@custom_th_url.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    lst = str(message).strip().split(' ')
+    try:
+        data = await auto_naga.get_tenhou_custom_url(int(lst[0]), int(lst[1]))
+        await custom_th_url.send(("http://tenhou.net/6/json=" + json.dumps(data, ensure_ascii=False)).replace(' ', ''))
+    except Exception as e:
+        print(e)
+        await custom_th_url.send('Usage: thurl <自定义牌谱编号> <小局编号>')
