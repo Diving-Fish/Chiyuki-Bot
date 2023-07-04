@@ -26,7 +26,9 @@ __plugin_meta = {
 plugin_manager.register_plugin(__plugin_meta)
 
 async def __group_checker(event: Event):
-    if not hasattr(event, 'group_id'):
+    if hasattr(event, 'message_type') and event.message_type == 'channel':
+        return False
+    elif not hasattr(event, 'group_id'):
         return False
     else:
         return plugin_manager.get_enable(event.group_id, __plugin_meta["name"])

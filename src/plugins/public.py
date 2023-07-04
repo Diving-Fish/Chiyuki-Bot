@@ -9,13 +9,25 @@ from nonebot.exception import IgnoredException
 from nonebot.adapters.onebot.v11.exception import ActionFailed
 from nonebot.message import event_preprocessor, run_postprocessor
 from src.libraries.image import *
+from src.data_access.redis import NumberRedisData
 import time
+import random
 
 from src.data_access.plugin_manager import plugin_manager
 
 
+def is_channel_message(event):
+    return hasattr(event, 'message_type') and event.message_type == 'guild'
+
 @event_preprocessor
 async def preprocessor(bot, event, state):
+    if is_channel_message(event):
+        qq = NumberRedisData(f'channel_bind_{event.user_id}')
+        setattr(event, 'sender_id', qq.data if qq.data != 0 else event.user_id)
+    elif hasattr(event, 'user_id'):
+        setattr(event, 'sender_id', event.user_id)
+    print(event.__dict__)
+            
     if hasattr(event, 'message_type') and event.message_type == "private" and event.sub_type != "friend":
         raise IgnoredException("not reply group temp message")
 
@@ -148,7 +160,7 @@ async def _(bot: Bot, message: Message = CommandArg()):
         await is_alive.finish("我在")
 
 
-shuffle = on_command('shuffle', rule=__group_checker)
+shuffle = on_command('shuffle')
 
 @shuffle.handle()
 async def _(event: Event, message: Message = CommandArg()):
@@ -156,9 +168,24 @@ async def _(event: Event, message: Message = CommandArg()):
         num = int(str(message).strip())
     except Exception:
         await shuffle.send("Usage: shuffle <number>")
-    if num > 100:
-        await shuffle.send("number should be lower than 100")
+    if num > 200:
+        await shuffle.send("number should be lower than 200")
     else:
         a = list(range(1, num + 1))
         random.shuffle(a)
         await shuffle.send(', '.join([str(b) for b in a]))
+
+
+channel_bind = on_command('qq绑定')
+
+@channel_bind.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if not is_channel_message(event):
+        return
+    try:
+        val = int(str(message).strip())
+        qq = NumberRedisData(f'channel_bind_{event.user_id}')
+        qq.save(val)
+        await channel_bind.send(f'已绑定频道用户 ID {event.user_id} 到 QQ 号 {val}')
+    except Exception:
+        await channel_bind.send('绑定的 qq 格式错误，请重试')

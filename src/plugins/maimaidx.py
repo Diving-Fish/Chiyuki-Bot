@@ -30,7 +30,9 @@ XXXmaimaiXXX什么 随机一首歌
 plugin_manager.register_plugin(__plugin_meta)
 
 async def __group_checker(event: Event):
-    if not hasattr(event, 'group_id'):
+    if hasattr(event, 'message_type') and event.message_type == 'channel':
+        return True
+    elif not hasattr(event, 'group_id'):
         return True
     else:
         return plugin_manager.get_enable(event.group_id, __plugin_meta["name"])
@@ -221,7 +223,7 @@ jrwm = on_command('今日舞萌', aliases={'今日mai'}, rule=__group_checker)
 
 @jrwm.handle()
 async def _(event: Event, message: Message = CommandArg()):
-    qq = int(event.get_user_id())
+    qq = int(event.sender_id)
     h = hash(qq)
     rp = h % 100
     wm_value = []
@@ -297,12 +299,15 @@ best_40_pic = on_command('b40', rule=__group_checker)
 async def _(event: Event, message: Message = CommandArg()):
     username = str(message).strip()
     if username == "":
-        payload = {'qq': str(event.get_user_id())}
+        payload = {'qq': str(event.sender_id)}
     else:
         payload = {'username': username}
     img, success = await generate(payload)
     if success == 400:
-        await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
+        if hasattr(event, 'message_type') and event.message_type == 'guild':
+            await best_40_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 【qq绑定 <qq>】 以绑定 qq 号")
+        else:
+            await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
     elif success == 403:
         await best_40_pic.send("该用户禁止了其他人获取数据。")
     else:
@@ -319,12 +324,15 @@ best_50_pic = on_command('b50', rule=__group_checker)
 async def _(event: Event, message: Message = CommandArg()):
     username = str(message).strip()
     if username == "":
-        payload = {'qq': str(event.get_user_id()),'b50':True}
+        payload = {'qq': str(event.sender_id),'b50':True}
     else:
         payload = {'username': username,'b50':  True}
     img, success = await generate50(payload)
     if success == 400:
-        await best_50_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
+        if hasattr(event, 'message_type') and event.message_type == 'guild':
+            await best_50_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 【qq绑定 <qq>】 以绑定 qq 号")
+        else:
+            await best_50_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
     elif success == 403:
         await best_50_pic.send("该用户禁止了其他人获取数据。")
     else:

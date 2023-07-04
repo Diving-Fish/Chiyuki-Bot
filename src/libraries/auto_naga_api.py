@@ -33,10 +33,11 @@ class AutoNaga:
         cache_data = NumberRedisData(f'naga_np_{user_id}')
         cache_data.save(cache_data.data + np)
 
-    async def order(self, custom: bool, data: Union[str, List]) -> Dict:
+    async def order(self, custom: bool, data: Union[str, List], player_types: str) -> Dict:
         body = {
             "secret": NAGA_SECRET,
             "custom": custom,
+            "player_types": player_types
         }
         if custom:
             body['haihus']: List = data
