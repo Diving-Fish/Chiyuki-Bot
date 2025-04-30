@@ -38,7 +38,7 @@ class ListRedisData(RedisData):
 
 
 class DictRedisData(RedisData):
-    def __init__(self, key):
-        super().__init__(key, lambda s : json.loads(s), lambda dct : json.dumps(dct), default={})
+    def __init__(self, key, default={}):
+        super().__init__(key, lambda s : json.loads(s), lambda dct : json.dumps(dct), default=default)
         if type(self.data) != type({}):
             raise Exception(f"{self.__dict__} is not a dict")

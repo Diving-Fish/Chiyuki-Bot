@@ -29,7 +29,9 @@ def text_to_image(text):
     text_list = text.split('\n')
     max_width = 0
     for text in text_list:
-        w, h = font.getsize(text)
+        l, t, r, b = font.getbbox(text)
+        w = r - l
+        h = b - t
         max_width = max(max_width, w)
     wa = max_width + padding * 2
     ha = h * len(text_list) + margin * (len(text_list) - 1) + padding * 2

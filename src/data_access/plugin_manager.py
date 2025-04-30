@@ -38,4 +38,12 @@ class PluginManager:
         status[plugin_name] = enable
         redis_global.set(self.__get_group_key(group_id), json.dumps(status))
 
+    def get_groups(self, plugin_name):
+        groups = []
+        for group_id in redis_global.keys("chiyuki*"):
+            status = self.get_all(group_id)
+            if status[plugin_name]:
+                groups.append(group_id)
+        return groups
+
 plugin_manager = PluginManager()

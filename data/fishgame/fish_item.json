@@ -1,0 +1,143 @@
+[
+    {
+        "id": 1,
+        "name": "食料",
+        "rarity": 1,
+        "description": "使用后，在 30 分钟内，【R】鱼的出现概率将大幅提高",
+        "price": 5
+    },
+    {
+        "id": 2,
+        "name": "白银食料",
+        "rarity": 2,
+        "description": "使用后，在 60 分钟内，【R】鱼和【SR】鱼的出现概率将大幅提高",
+        "price": 50
+    },
+    {
+        "id": 3,
+        "name": "黄金食料",
+        "rarity": 3,
+        "description": "使用后，在 120 分钟内，【R】鱼、【SR】鱼和【SSR】鱼的出现概率将大幅提高"
+    },
+    {
+        "id": 4,
+        "name": "渔力强化剂",
+        "rarity": 1,
+        "description": "使用后，下一次捕鱼时渔力提升 10 点"
+    },
+    {
+        "id": 5,
+        "name": "白银渔力强化剂",
+        "rarity": 2,
+        "description": "使用后，下 2 次捕鱼时渔力提升 20 点，效果不与其他强化剂叠加"
+    },
+    {
+        "id": 6,
+        "name": "黄金渔力强化剂",
+        "rarity": 3,
+        "description": "使用后，下 4 次捕鱼时渔力提升 40 点，效果不与其他强化剂叠加"
+    },
+    {
+        "id": 7,
+        "name": "渔获加成卡",
+        "rarity": 1,
+        "description": "使用后，在 20 分钟内捕鱼时，获得的渔获提升 25%"
+    },
+    {
+        "id": 8,
+        "name": "白银渔获加成卡",
+        "rarity": 2,
+        "description": "使用后，在 20 分钟内捕鱼时，获得的渔获提升 50%，效果不与其他加成卡叠加"
+    },
+    {
+        "id": 9,
+        "name": "黄金渔获加成卡",
+        "rarity": 3,
+        "description": "使用后，在 20 分钟内捕鱼时，获得的渔获提升 100%，效果不与其他加成卡叠加"
+    },
+    {
+        "id": 101,
+        "name": "机械抓手",
+        "rarity": 1,
+        "equipable": true,
+        "type": "tool",
+        "power": 5,
+        "description": "能够稍微提升渔力的便捷工具"
+    },
+    {
+        "id": 102,
+        "name": "纤维编织网",
+        "rarity": 2,
+        "equipable": true,
+        "type": "tool",
+        "power": 10,
+        "description": "能够提升渔力的便捷工具"
+    },
+    {
+        "id": 103,
+        "name": "探测罗盘",
+        "rarity": 2,
+        "equipable": true,
+        "type": "tool",
+        "power": 20,
+        "description": "能够快速定位鱼群的工具"
+    },
+    {
+        "id": 104,
+        "name": "24 号球衣",
+        "rarity": 3,
+        "equipable": true,
+        "type": "tool",
+        "power": 40,
+        "description": "充满曼巴精神的装备，能够提升工作效率，提升大量渔力"
+    },
+    {
+        "id": 105,
+        "name": "波浪形态",
+        "rarity": 4,
+        "equipable": true,
+        "type": "tool",
+        "power": 60,
+        "description": "你就是水本身，能够极大幅提升渔力"
+    },
+    {
+        "id": 201,
+        "name": "青铜渔具",
+        "rarity": 1,
+        "equipable": true,
+        "type": "rod",
+        "power": 10,
+        "description": "青铜打造的渔具，能够提升渔力",
+        "price": 50
+    },
+    {
+        "id": 202,
+        "name": "白银渔具",
+        "rarity": 2,
+        "equipable": true,
+        "type": "rod",
+        "power": 20,
+        "description": "白银打造的渔具，能够提升渔力",
+        "price": 200
+    },
+    {
+        "id": 203,
+        "name": "黄金渔具",
+        "rarity": 3,
+        "equipable": true,
+        "type": "rod",
+        "power": 40,
+        "description": "黄金打造的渔具，能够提升渔力",
+        "price": 1000
+    },
+    {
+        "id": 204,
+        "name": "钻石渔具",
+        "rarity": 4,
+        "equipable": true,
+        "type": "rod",
+        "power": 80,
+        "description": "钻石打造的渔具，能够提升渔力",
+        "price": 5000
+    }
+]
