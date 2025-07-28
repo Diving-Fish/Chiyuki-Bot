@@ -3,8 +3,8 @@
 from collections import defaultdict
 
 import nonebot
-from nonebot.adapters.onebot.v11 import Adapter
-
+from nonebot.adapters.onebot.v11 import Adapter, Message, MessageSegment
+from nonebot import require, get_bot, get_driver
 
 # Custom your logger
 # 
@@ -24,9 +24,12 @@ driver = nonebot.get_driver()
 driver.register_adapter(Adapter)
 driver.config.help_text = {}
 
+import src.quart
+
+driver.server_app.mount("/web", src.quart.quart_app)
 
 nonebot.load_plugins("src/plugins")
-nonebot.load_plugin("nonebot_plugin_guild_patch")
+nonebot.load_plugins("private/plugins")
 
 # Modify some config / config depends on loaded configs
 # 
@@ -35,4 +38,5 @@ nonebot.load_plugin("nonebot_plugin_guild_patch")
 
 
 if __name__ == "__main__":
-    nonebot.run()
+    nonebot.run(port=8000)
+

@@ -38,6 +38,9 @@ players = {}
 with open('data/fishgame/fish_data.json', 'r', encoding='utf-8') as f:
     fish_data = json.load(f)
 
+with open('data/fishgame/fish_data_poke_ver.json', 'r', encoding='utf-8') as f:
+    fish_data_poke_ver = json.load(f)
+
 with open('data/fishgame/fish_item.json', 'r', encoding='utf-8') as f:
     fish_item = json.load(f)
 
@@ -225,7 +228,7 @@ class FishGame(DictRedisData):
                 if player is None:
                     continue
                 players[qq] = player
-            print(player.power)
+            # print(player.power)
             p += player.power
             count += 1
         self.average_power = p / count
@@ -243,27 +246,35 @@ class FishGame(DictRedisData):
     def simulate_spawn_fish(self):
         self.refresh_buff()
         # calculate base probability
-        prob_dist = list(map(lambda x: x['base_probability'] * (1 + self.get_buff_for_rarity(x['rarity'])), fish_data))
+        if self.data.get('use_custom_data', False):
+            fish_data_local = fish_data_poke_ver
+        else:
+            fish_data_local = fish_data
+        prob_dist = list(map(lambda x: x['base_probability'] * (1 + self.get_buff_for_rarity(x['rarity'])), fish_data_local))
         all_prob = sum(prob_dist)
         for i in range(len(prob_dist)):
-            power = fish_data[i]['std_power']
+            power = fish_data_local[i]['std_power']
             # 平均 power 每低于 std_power 5 点，概率乘 0.9
             prob_dist[i] *= 0.9 ** max(0, (power - self.average_power) / 5)
-            print(prob_dist[i])
+            # print(prob_dist[i])
         # normalize
         all_prob2 = sum(prob_dist)
         prob_dist = list(map(lambda x: x * all_prob / all_prob2, prob_dist))
         s = ''
-        for i in range(len(fish_data)):
+        for i in range(len(fish_data_local)):
             # check this fish has been caught before
-            if self.is_fish_caught(fish_data[i]['name']):
-                s += f'{fish_data[i]["name"]}【{fish_data[i]["rarity"]}】（难度{fish_data[i]['std_power']}）: {prob_dist[i]*100:.4f}%\n'
+            if self.is_fish_caught(fish_data_local[i]['name']):
+                s += f'{fish_data_local[i]["name"]}【{fish_data_local[i]["rarity"]}】（难度{fish_data_local[i]['std_power']}）: {prob_dist[i]*100:.4f}%\n'
             else:
-                s += f'？？？？？？【{fish_data[i]["rarity"]}】: {prob_dist[i]*100:.4f}%\n'
+                s += f'？？？？？？【{fish_data_local[i]["rarity"]}】: {prob_dist[i]*100:.4f}%\n'
         return s
 
 
     def spawn_fish(self):
+        if self.data.get('use_custom_data', False):
+            fish_data_local = fish_data_poke_ver
+        else:
+            fish_data_local = fish_data
         self.refresh_buff()
         # self.current_fish = {
         #     "name": generate_mixed_gibberish(),
@@ -277,10 +288,10 @@ class FishGame(DictRedisData):
         if self.current_fish is not None:
             return self.current_fish
         # calculate base probability
-        prob_dist = list(map(lambda x: x['base_probability'] * (1 + self.get_buff_for_rarity(x['rarity'])), fish_data))
+        prob_dist = list(map(lambda x: x['base_probability'] * (1 + self.get_buff_for_rarity(x['rarity'])), fish_data_local))
         all_prob = sum(prob_dist)
         for i in range(len(prob_dist)):
-            power = fish_data[i]['std_power']
+            power = fish_data_local[i]['std_power']
             # 平均 power 每低于 std_power 5 点，概率乘 0.9
             prob_dist[i] *= 0.9 ** max(0, (power - self.average_power) / 15)
         # normalize
@@ -288,14 +299,14 @@ class FishGame(DictRedisData):
         prob_dist = list(map(lambda x: x * all_prob / all_prob2, prob_dist))
         # random 0 - 1
         r = random.random()
-        print(f'random: {r}, target: {all_prob}')
+        # print(f'random: {r}, target: {all_prob}')
         for i in range(len(prob_dist)):
             if r < prob_dist[i]:
-                self.current_fish = fish_data[i]
-                self.data['fish_log'].append(fish_data[i])
+                self.current_fish = fish_data_local[i]
+                self.data['fish_log'].append(fish_data_local[i])
                 self.save()
                 self.leave_time = 5
-                return fish_data[i]
+                return fish_data_local[i]
             r -= prob_dist[i]
         return None
 
@@ -319,8 +330,6 @@ class FishGame(DictRedisData):
             success_rate += (40 - 40 * 0.9 ** (diff / 5))
         else:
             success_rate *= 0.9 ** (-diff / 5)
-        if str(player.qq) == '2300756578':
-            success_rate = 999.99
 
         for i, buff in enumerate(player.data['buff']):
             if buff.get('time', 0) > 0:

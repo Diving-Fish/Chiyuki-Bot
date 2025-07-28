@@ -223,7 +223,7 @@ jrwm = on_command('今日舞萌', aliases={'今日mai'}, rule=__group_checker)
 
 @jrwm.handle()
 async def _(event: Event, message: Message = CommandArg()):
-    qq = int(event.sender_id)
+    qq = int(event.user_id)
     h = hash(qq)
     rp = h % 100
     wm_value = []
@@ -292,30 +292,30 @@ BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT
             await query_chart.send("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
-best_40_pic = on_command('b40', rule=__group_checker)
+# best_40_pic = on_command('b40', rule=__group_checker)
 
 
-@best_40_pic.handle()
-async def _(event: Event, message: Message = CommandArg()):
-    username = str(message).strip()
-    if username == "":
-        payload = {'qq': str(event.sender_id)}
-    else:
-        payload = {'username': username}
-    img, success = await generate(payload)
-    if success == 400:
-        if hasattr(event, 'message_type') and event.message_type == 'guild':
-            await best_40_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 【qq绑定 <qq>】 以绑定 qq 号")
-        else:
-            await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
-    elif success == 403:
-        await best_40_pic.send("该用户禁止了其他人获取数据。")
-    else:
-        await best_40_pic.send(Message([
-            MessageSegment("image", {
-                "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
-            })
-        ]))
+# @best_40_pic.handle()
+# async def _(event: Event, message: Message = CommandArg()):
+#     username = str(message).strip()
+#     if username == "":
+#         payload = {'qq': str(event.sender_id)}
+#     else:
+#         payload = {'username': username}
+#     img, success = await generate(payload)
+#     if success == 400:
+#         if hasattr(event, 'message_type') and event.message_type == 'guild':
+#             await best_40_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 【qq绑定 <qq>】 以绑定 qq 号")
+#         else:
+#             await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
+#     elif success == 403:
+#         await best_40_pic.send("该用户禁止了其他人获取数据。")
+#     else:
+#         await best_40_pic.send(Message([
+#             MessageSegment("image", {
+#                 "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
+#             })
+#         ]))
 
 best_50_pic = on_command('b50', rule=__group_checker)
 
@@ -324,13 +324,13 @@ best_50_pic = on_command('b50', rule=__group_checker)
 async def _(event: Event, message: Message = CommandArg()):
     username = str(message).strip()
     if username == "":
-        payload = {'qq': str(event.sender_id),'b50':True}
+        payload = {'qq': str(event.user_id),'b50':True}
     else:
         payload = {'username': username,'b50':  True}
     img, success = await generate50(payload)
     if success == 400:
         if hasattr(event, 'message_type') and event.message_type == 'guild':
-            await best_50_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 【qq绑定 <qq>】 以绑定 qq 号")
+            await best_50_pic.send("在 qq 频道中无法获取您的 qq 号，请输入 cuid 获取频道 ID 之后前往查分器官网绑定后再查询")
         else:
             await best_50_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
     elif success == 403:

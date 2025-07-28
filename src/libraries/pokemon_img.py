@@ -1,12 +1,17 @@
+from collections import defaultdict
 from io import BytesIO
 import os
 import json
 import re
 from PIL import Image, ImageFont, ImageDraw
+import requests
+
+from src.libraries.poke_dmg_calc import get_accurate_name
 
 # Const values
 
 STATIC_FILE_DIR = "src/static/poke/"
+SHOWDOWN_DATA_DIR = "data/poke/showdown/"
 FILE_CACHE_DIR = "src/static/poke/imgcache/"
 COVER_DIR = "src/static/poke/covers/"
 FONT_PATH = STATIC_FILE_DIR + "LXGWWenKai-Regular.ttf"
@@ -21,15 +26,6 @@ comment_style = ImageFont.truetype(FONT_PATH, 28, encoding="utf-8")
 small_style = ImageFont.truetype(FONT_PATH, 24, encoding="utf-8")
 desc_style = ImageFont.truetype(FONT_PATH, 20, encoding="utf-8")
 
-ability_cn = {}
-pokemon_dict = {}
-pokemon_cn = {}
-pokemon_cn_to_eng = {}
-move_cn = {}
-pm_move_dict = {}
-move_list = {}
-pic_dict = {}
-item_list = []
 type_dmg_tbl = [
 [1, 1, 1, 1, 1, 0.5, 1, 0, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 [2, 1, 0.5, 0.5, 1, 2, 0.5, 0, 2, 1, 1, 1, 1, 0.5, 2, 1, 2, 0.5],
@@ -130,112 +126,144 @@ def tn(type):
     return type_tbl[type][0]
 
 
-with open(STATIC_FILE_DIR + "MoveList.txt", encoding='utf-8') as f:
-    for line in f.read().split('\n'):
-        arr = line.split('\t')
-        move_cn[arr[3]] = arr
-        try:
-            move_list[int(arr[0])] = arr
-        except ValueError:
-            pass
+with open(SHOWDOWN_DATA_DIR + "move_list.json") as f:
+    move_dict: dict[str, dict] = json.load(f)
 
-with open(STATIC_FILE_DIR + "AbilityList.txt", encoding='utf-8') as f:
-    for line in f.read().split('\n'):
-        arr = line.split('\t')
-        ability_cn[arr[3]] = arr
+with open(SHOWDOWN_DATA_DIR + "move.json") as f:
+    pokemon_move_dict: dict[str, dict] = json.load(f)
 
-with open(STATIC_FILE_DIR + "PokeList.txt", encoding='utf-8') as f:
-    for line in f.read().split('\n'):
-        arr = line.split('\t')
-        pokemon_cn[arr[3]] = arr
-        pokemon_cn_to_eng[arr[1]] = arr[3]
+with open(SHOWDOWN_DATA_DIR + "ability_list.json") as f:
+    ability_dict_raw: dict[str, dict] = json.load(f)
+    ability_dict = {}
+    for k, v in ability_dict_raw.items():
+        ability_dict[v['name']] = v
 
-with open(STATIC_FILE_DIR + "ItemList.txt", encoding='utf-8') as f:
-    for line in f.read().split('\n'):
-        arr = line.split('\t')
-        item_list.append(arr)
+with open(SHOWDOWN_DATA_DIR + "pokedex.json") as f:
+    pokedex: dict[str, dict] = json.load(f)
 
-with open(STATIC_FILE_DIR + "move_list.json", encoding='utf-8') as f:
-    pm_move_dict = json.load(f)
+with open(SHOWDOWN_DATA_DIR + "translations.json", 'r', encoding='utf-8') as f:
+    eng2zh: dict[str, str] = json.load(f)
 
-with open(STATIC_FILE_DIR + "pokemon_dict.json", encoding='utf-8') as f:
-    pokemon_dict = json.load(f)
+with open(SHOWDOWN_DATA_DIR + "move_cn.txt", 'r', encoding='utf-8') as f:
+    move_cn = f.read().splitlines()
+    move_cn_dict = {}
+    for line in move_cn:
+        args = line.split('\t')
+        if args[3] in move_cn_dict and "Ｚ" not in args[1]:
+            raise KeyError(f"{args[3]} duplicate in move")
+        move_cn_dict[args[3]] = {
+            "name": args[1],
+            "description": args[-1]
+        }
 
-with open(STATIC_FILE_DIR + "pic_dict.json", encoding='utf-8') as f:
-    pic_dict = json.load(f)
+with open(SHOWDOWN_DATA_DIR + "ability_cn.txt", 'r', encoding='utf-8') as f:
+    ability_cn = f.read().splitlines()
+    ability_cn_dict = {}
+    for line in ability_cn:
+        args = line.split('\t')
+        if args[3] in ability_cn_dict:
+            raise KeyError(f"{args[3]} duplicate in ability")
+        ability_cn_dict[args[3]] = {
+            "name": args[1],
+            "description": args[-3]
+        }
 
+pokemon_cn_to_eng = {}
+for poke in pokedex.values():
+    name = poke['name']
+    if name in eng2zh:
+        pokemon_cn_to_eng[eng2zh[name].lower()] = name.lower()
+    else:
+        name_tags = name.split('-')
+        if len(name_tags) > 1:
+            name = eng2zh[name_tags[0]]
+            for tag in name_tags[1:]:
+                name += eng2zh['-' + tag]
+        pokemon_cn_to_eng[name.lower()] = poke['name'].lower()
 
-def get_move(id):
-    move = move_list[id]
+pokemon_eng_to_key = {}
+for key, poke in pokedex.items():
+    pokemon_eng_to_key[poke['name'].lower()] = key
+
+def get_move(pokemon, name):
+    move = move_dict[name]
+    genre = {
+        'Physical': '物理',
+        'Special': '特殊',
+        'Status': '变化'
+    }
     return {
-        "id": id,
-        "name": move[1].strip(),
-        "type": type_cn_to_eng(move[4].strip()),
-        "genre": move[5].strip(),
-        "power": move[6].strip(),
-        "acc": move[7].strip(),
-        "pp": move[8].strip(),
-        "desc": move[9].strip(),
-        "usual": len(move) > 10
+        "name": move_cn_dict[move["name"]]["name"],
+        "type": move["type"],
+        "genre": genre[move["category"]],
+        "power": str(move['basePower']) if move['basePower'] > 0 else "—",
+        "acc": str(move["accuracy"]) if type(move["accuracy"]) == type(0) else "—",
+        "pp": str(move["pp"]),
+        "desc": move_cn_dict[move["name"]]["description"],
+        "usual": name in pokemon_move_dict[pokemon]['overused']
     }
 
 
-def get_item(name):
-    for item in item_list:
-        for v in item:
-            if name == v:
-                return item
-    return None
-
-
-def get_pokemon(pokename, index=0):
+def get_pokemon(pokename):
+    pokename = pokename.lower()
     if pokename in pokemon_cn_to_eng:
         name = pokemon_cn_to_eng[pokename]
     else:
         name = pokename
-    if name not in pokemon_dict:
+    if name not in pokemon_eng_to_key:
         return None, None
-    poke = pokemon_dict[name][index]
+    poke_key = pokemon_eng_to_key[name]
+    poke = pokedex[poke_key]
     res = {
-        "name": pokemon_cn[name][1],
-        "jpname": pokemon_cn[name][2],
-        "engname": pokemon_cn[name][3],
+        "key": poke_key,
+        "name": eng2zh[poke['name']],
+        # "jpname": pokemon_cn[name][2],
+        "engname": poke['name'],
         "ability_list": [],
-        "moves": {
-            "by_leveling_up": [],
-            "all": [],
-        },
+        "moves": pokemon_move_dict[poke_key]['overused'] + pokemon_move_dict[poke_key]['useless'],
         "type": [],
         "stats": []
     }
-    for ab in poke["ability"]:
-        ab_cn = ability_cn[ab]
+    if len(res["moves"]) == 0:
+        print(f"Warn: {poke['name']} has no moves, try find base")
+        species = poke['baseSpecies'] if 'baseSpecies' in poke else poke['name']
+        if species.lower() in pokemon_move_dict:
+            new_moves = pokemon_move_dict[species.lower()]['overused'] + pokemon_move_dict[species.lower()]['useless']
+            if len(new_moves) > 0 or species.lower() == "unown":
+                res["moves"] = new_moves
+            else:
+                raise Exception(f"Error: {poke['name']} has no moves")
+            
+    for ab_index in ["0", "1"]:
+        if ab_index in poke["abilities"]:
+            ab = poke["abilities"][ab_index]
+            res["ability_list"].append({
+                "name": ability_cn_dict[ab]["name"],
+                "hidden": False,
+                "description": ability_cn_dict[ab]["description"]
+            })
+    if "H" in poke["abilities"]:
+        ab = poke["abilities"]["H"]
         res["ability_list"].append({
-            "name": ab_cn[1],
-            "hidden": False,
-            "description": ab_cn[4]
-        })
-    if poke["hiddenability"] != "":
-        ab = poke["hiddenability"]
-        ab_cn = ability_cn[ab]
-        res["ability_list"].append({
-            "name": ab_cn[1],
+            "name": ability_cn_dict[ab]["name"],
             "hidden": True,
-            "description": ab_cn[4]
+            "description": ability_cn_dict[ab]["description"]
         })
-    res["type"] = poke["type"]
-    res["stats"] = poke["stats"]
-    moves = pm_move_dict[name]
-    for move in moves["byLevelingUp"]:
-        res["moves"]["by_leveling_up"].append({
-            "level": move[0],
-            "move": get_move(move[1])
-        })
-    for move in moves["all"]:
-        if get_move(move) not in res["moves"]["all"]:
-            res["moves"]["all"].append(get_move(move))
-            res["moves"]["all"].sort(key=lambda elem: elem["id"])
-    return res, pokemon_dict[name]
+    res["type"] = poke["types"]
+    res["stats"] = list(poke["baseStats"].values())
+    res["moves"] = {
+        "all": [get_move(poke_key, move) for move in res["moves"] if move != '' and move in move_dict]
+    }
+    return res
+
+
+def get_image_url(pokemon, base=False):
+    name = pokemon['baseSpecies'] if 'baseSpecies' in pokemon else pokemon['name']
+    name = name.replace(" ", "").replace("-", "").replace("’", "").lower()
+    if not base and pokemon.get('forme', '') != '':
+        forme = pokemon['forme'].replace(" ", "").replace("-", "").replace("’", "").lower()
+        name += f"-{forme}"
+    return f"https://play.pokemonshowdown.com/sprites/home-centered/{name}.png"
 
 
 def get_length_of_val(val):
@@ -261,16 +289,28 @@ def get_min_max(pokedata, level):
         maxv[i] = calc_stat(pokedata["stats"][i], level, 31, 252, 1.1)
     return minv, maxv
 
-def get_image(pokename, index=0, force_generate=False):
-    data, others = get_pokemon(pokename, index)
+def get_image(pokename, force_generate=False):
+    pokename = get_accurate_name(pokename)
+    data = get_pokemon(pokename)
     if data is None:
         return None, None
 
-    filepath = FILE_CACHE_DIR + data['engname'] + (f"_{index}" if index > 0 else "") + ".png"
+    filepath = FILE_CACHE_DIR + pokedex[data['key']]['name'].lower() + ".png"
+    print(filepath)
     if os.path.exists(filepath) and not force_generate:
-        return filepath, others
+        print('Cached image found for', data['engname'])
+        return filepath
 
-    cover = Image.open(f"{COVER_DIR}{data['engname']}.png")
+    image_url = get_image_url(pokedex[data['key']])
+    cover_url = f"{COVER_DIR}{data['engname']}.png"
+    if not os.path.exists(cover_url):
+        try:
+            cover = Image.open(BytesIO(requests.get(image_url).content))
+        except Exception as e:
+            image_url = get_image_url(pokedex[data['key']], True)
+            cover = Image.open(BytesIO(requests.get(image_url).content))
+    else:
+        cover = Image.open(cover_url)
     cover = cover.resize((500, 500), Image.Resampling.BILINEAR)
 
     im = Image.new("RGBA", (1200, 4000))
@@ -278,7 +318,8 @@ def get_image(pokename, index=0, force_generate=False):
     draw.rectangle((0, 0, 1200, 4000), tc(data["type"][0]))
     draw.rounded_rectangle((16, 16, 1200 - 16, 4000 - 16), 20, tc2(data["type"][0]))
     draw.text((40, 24), data["name"], fill="#333333", font=title_style)
-    draw.text((52 + len(data["name"] * 80), 64), data["jpname"] + " " + data["engname"], fill="#333333", font=subtitle_style)
+    name_width = draw.textlength(data["name"], font=title_style)
+    draw.text((52 + name_width, 64), data["engname"], fill="#333333", font=subtitle_style)
     draw.text((40, 128), tn(data["type"][0]), fill=tc(data["type"][0]), stroke_fill="#888888", stroke_width=2, font=type_style)
     if len(data["type"]) == 2:
         draw.text((56 + len(tn(data["type"][0])) * 48, 128), tn(data["type"][1]), fill=tc(data["type"][1]), stroke_fill="#888888", stroke_width=2, font=type_style)
@@ -401,291 +442,110 @@ def get_image(pokename, index=0, force_generate=False):
 
     im2.paste(im.crop((0, 0, 1200, current_y)), (0, 0))
 
-    return im2, others
+    return im2
 
 
-def generate_cache():
-    j = 0
-    for name, poke_datas in pokemon_dict.items():
-        j += 1
-        for i in range(len(poke_datas)):
-            filepath = FILE_CACHE_DIR + name + (f"_{i}" if i > 0 else "") + ".png"
-            try:
-                get_image(name, i, True)[0].save(filepath)
-                print(f"{j}-{i}")
-            except Exception as e:
-                print(f"err: {j}-{i}, {str(e)}")
-
-
-def get_token(text, index):
-    s = ""
-    for i in range(index, len(text)):
-        if text[i] == " ":
-            return s, i+1
-        s += text[i]
-    return s, i+1
-
-
-def parse_pokemon(text, index):
-    result = {
-        "pokemon": None,
-        "item": [],
-        "ability": [],
-        "bps": [0, 0, 0, 0, 0, 0],
-        "ivs": [31, 31, 31, 31, 31, 31],
-        "high": 0, # 性格修正+
-        "low": 0, # 性格修正-
-        "tera": None,
-        "mods": 0, # 能力变化
-        "percent": 100 # 能力变化百分比
+types_ability_modifier = {
+    "Fire": {
+        "Flash Fire": 0,
+        "Well-Baked Body": 0,
+        "Water Bubble": 0.5,
+        "Thick Fat": 0.5,
+        "Heatproof": 0.5,
+        "Dry Skin": 1.25,
+        "Fluffy": 2,
+    },
+    "Water": {
+        "Water Absorb": 0,
+        "Dry Skin": 0,
+        "Storm Drain": 0,
+    },
+    "Electric": {
+        "Volt Absorb": 0,
+        "Lighting Rod": 0,
+        "Motor Drive": 0,
+    },
+    "Ground": {
+        "Levitate": 0,
+        "Earth Eater": 0,
+    },
+    "Ice": {
+        "Thick Fat": 0.5
+    },
+    "Grass": {
+        "Sap Sipper": 0
+    },
+    "Ghost": {
+        "Purifying Salt": 0.5
     }
-    while True:
-        token, index = get_token(text, index)
-        if token == "":
-            return result, index
-        item = get_item(token)
-        # parse item
-        if item is not None:
-            result["item"] = item
-            continue
-        # parse ability
-        pass
-        # parse mods
-        reg = "([+|-][0-6])"
-        grp = re.match(reg, token)
-        if grp:
-            result["mods"] = int(grp.group(0))
-            continue
-        # parse mods percent
-        reg = "([0-9]+)%"
-        grp = re.match(reg, token)
-        if grp:
-            result["percent"] = float(grp.group(1))
-            continue
-        
-        flag = False
-        # parse ivs
-        tbl = ['ivhp', 'ivatk', 'ivdef', 'ivspa', 'ivspd', 'ivspe',
-        'ivh', 'iva', 'ivb', 'ivc', 'ivd', 'ivs',
-        'ivhp', '攻', 'ivdef', 'ivspa', 'ivspd', '速']
-        for i, t in enumerate(tbl):
-            if t in token.lower():
-                t_re = token.lower().replace(t, "")
-                result["ivs"][i % 6] = max(0, min(31, int(t_re)))
-                flag = True
-                break
-        if flag:
-            continue
-        # parse bps
-        tbl = ['hp', 'atk', 'def', 'spa', 'spd', 'spe',
-        'h', 'a', 'b', 'c', 'd', 's',
-        '生命', '攻击', '防御', '特攻', '特防', '速度']
-        for i, t in enumerate(tbl):
-            if t in token.lower():
-                t_re = token.lower().replace(t, "")
-                if "+" in t_re:
-                    t_re = t_re.replace("+", "")
-                    if i % 6 != 0:
-                        result["high"] = i % 6
-                elif "-" in t_re:
-                    t_re = t_re.replace("-", "")
-                    if i % 6 != 0:
-                        result["low"] = i % 6
-                result["bps"][i % 6] = max(0, min(252, int(t_re)))
-                flag = True
-                break
-        if flag:
-            continue
-        # parse tera
-        if "太晶" in token:
-            tera_type, _ = get_type(token.replace("太晶", ""))
-            if tera_type != None:
-                result["tera"] = tera_type
-                continue
-        # parse pokemon
-        for poke in pokemon_cn.values():
-            for value in poke:
-                s = f"{value}([0-9]?)"
-                regex = re.match(s, token)
-                if regex:
-                    pmi = regex.group(1)
-                    if pmi == "":
-                        pmi = 0
-                    else:
-                        pmi = int(pmi) - 1
-                    pokemon, _ = get_pokemon(poke[1], pmi)
-                    result["pokemon"] = {
-                        "name": pokemon["name"],
-                        "stats": pokemon["stats"],
-                        "type": pokemon["type"]
-                    }
-                    return result, index
+}
 
+for key in type_tbl:
+    if key not in ["Flying", "Rock", "Ghost", "Fire", "Dark"]:
+        types_ability_modifier.setdefault(key, {})["Wonder Guard"] = 0
 
-def parse_move(text, index):
+def get_effectiveness_for_pokemon(poke, type, effectiveness=1):
+    attack_type_index = list(type_tbl.keys()).index(type)
+    defender_types = poke.get('types', [])
+    for poke_type in defender_types:
+        poke_type_index = list(type_tbl.keys()).index(poke_type)
+        effectiveness *= type_dmg_tbl[attack_type_index][poke_type_index]
     result = {
-        "name": "",
-        "bp": 0,
-        "category": 0, # 0 for physical, 1 for special, 2 for ...
-        "type": "Normal"
+        "default": effectiveness
     }
-    token, index = get_token(text, index)
-    # parse existed move
-    for move in move_list.values():
-        if token.lower() == move[1].lower() or token.lower() == move[2].lower() or token.lower() == move[3].lower():
-            result["name"] = move[1]
-            try:
-                result["bp"] = int(move[6])
-            except Exception:
-                result["bp"] = 0
-            result["type"], _ = get_type(move[4])
-            result["category"] = ["物理", "特殊", "变化"].index(move[5])
-            return result, index
-    # parse unexisted move
-    result["name"] = "自定义"
-    # parse type
-    for type_eng, type_v in type_tbl.items():
-        if type_eng in token:
-            token = token.replace(type_eng, "")
-            result["type"] = type_eng
-            break
-        if type_v[0] in token:
-            token = token.replace(type_v[0], "")
-            result["type"] = type_eng
-            break
-        if type_v[3] in token:
-            token = token.replace(type_v[3], "")
-            result["type"] = type_eng
-            break
-    if "物理" in token:
-        token = token.replace("物理", "")
-        result["category"] = 0
-    elif "特殊" in token:
-        token = token.replace("特殊", "")
-        result["category"] = 1
-    elif "变化" in token:
-        token = token.replace("变化", "")
-        result["category"] = 2
-    try:
-        result["bp"] = int(token)
-    except Exception:
-        result["bp"] = 0
-    result["name"] += f'（{type_tbl[result["type"]][0]} {["物理", "特殊", "变化"][result["category"]]} {result["bp"]} BP）'
-    return result, index
-
-
-def parse_other(text, index):
-    res = [[], [], [], 1]
-    while index != len(text):
-        value, index = get_token(text, index)
-        if 'hit' in value and value[-3:] == 'hit':
-            res[3] = int(value[:-3])
-            continue
-        elif 'bp' in value and value[-2:] == 'bp':
-            res[0].append(float(value[:-2]))
-            continue
-        elif value[-1] == 'p':
-            res[1].append(float(value[:-1]))
-            continue
+    for ability in poke.get('abilities', {}).values():
+        if ability in types_ability_modifier.get(type, {}):
+            modifier = types_ability_modifier[type][ability]
+            result[ability] = effectiveness * modifier
         else:
-            res[2].append(float(value))
-            continue
-    return res
-
-
-def calculate_damage(text):
-    
-    def poke_round(val):
-        if val % 1 > 0.5:
-            return int(val + 1)
-        return int(val)
-
-    result = {
-        "percent": [],
-        "int": [],
-        "range": [],
-        "hp": 0
-    }
-    text = text.strip()
-    attacker, index = parse_pokemon(text, 0)
-    move, index = parse_move(text, index)
-    target, index = parse_pokemon(text, index)
-    mods = parse_other(text, index)
-    print(mods)
-    
-    cat_addition = move["category"] * 2
-    if cat_addition == 4:
-        return result
-    modifier = 1.0
-    if attacker["high"] == 1 + cat_addition:
-        modifier = 1.1
-    elif attacker["low"] == 1 + cat_addition:
-        modifier = 0.9
-    attack = calc_stat(attacker["pokemon"]["stats"][1 + cat_addition], 50, attacker["ivs"][1 + cat_addition], attacker["bps"][1 + cat_addition], modifier)
-    attack = poke_round(attack * attacker["percent"] / 100)
-    stat_mod = attacker["mods"]
-    if stat_mod >= 0:
-        attack = int(attack * (2 + stat_mod) / 2)
-    else:
-        attack = int(attack * 2 / (2 - stat_mod))
-
-    modifier = 1.0
-    if target["high"] == 2 + cat_addition:
-        modifier = 1.1
-    elif target["low"] == 2 + cat_addition:
-        modifier = 0.9
-    defense = calc_stat(target["pokemon"]["stats"][2 + cat_addition], 50, target["ivs"][2 + cat_addition], target["bps"][2 + cat_addition], modifier)
-    defense = poke_round(defense * target["percent"] / 100)
-    stat_mod = target["mods"]
-    if stat_mod >= 0:
-        defense = int(defense * (2 + stat_mod) / 2)
-    else:
-        defense = int(defense * 2 / (2 - stat_mod))
-
-    target_hp = calc_stat(target["pokemon"]["stats"][0], 50, target["ivs"][0], target["bps"][0], 1, True)
-    result["hp"] = target_hp
-
-    base_power = move["bp"]
-    for mod in mods[0]:
-        base_power *= int(mod * 4096) / 4096
-    base_power = int(base_power)
-
-    damage = int(int(((int((2 * 50) / 5 + 2) * base_power) * attack) / defense) / 50 + 2)
-    attack_type = json.loads(json.dumps(attacker["pokemon"]["type"]))
-    attack_type.append(attacker["tera"])
-
-    if target["tera"] is not None:
-        defend_type1 = target["tera"]
-        defend_type2 = None
-    else:
-        defend_type1 = target["pokemon"]["type"][0]
-        defend_type2 = None if len(target["pokemon"]["type"]) == 1 else target["pokemon"]["type"][1]
-
-    for mod in mods[1]:
-        damage *= int(mod * 4096) / 4096
-    
-    damage_tbl = []
-    for i in range(16):
-        new_dmg = int(damage * (85 + i) / 100)
-        effectiveness = get_type_scale(defend_type1, defend_type2, move["type"])
-        stab = 4096
-        for a in attack_type:
-            if a == move["type"]:
-                stab += 2048
-        new_dmg = new_dmg * stab / 4096
-        new_dmg = int(poke_round(new_dmg) * effectiveness)
-        for mod in mods[2]:
-            new_dmg *= int(mod * 4096) / 4096
-        new_dmg = poke_round(max(1, new_dmg))
-        damage_tbl.append(new_dmg)
-
-    result["int"] = damage_tbl
-    if mods[3] != 1:
-        result["range"] = [damage_tbl[0] * mods[3], damage_tbl[15] * mods[3]]
-        for dmg in result["range"]:
-            result["percent"].append(int(dmg * 1000 / target_hp) / 10)
-    else:
-        for dmg in result["int"]:
-            result["percent"].append(int(dmg * 1000 / target_hp) / 10)
-
+            result[ability] = effectiveness
     return result
+
+def get_effectiveness_for_all_type(attack_type, effectiveness=1):
+    result = []
+    types = list(type_tbl.keys())
+    attack_index = types.index(attack_type)
+    for i in range(len(types)):
+        for j in range(i, len(types)):
+            if i == j:
+                rate = effectiveness * type_dmg_tbl[attack_index][i]
+                if rate < 1.49:
+                    result.append([types[i]])
+            else:
+                rate = effectiveness * type_dmg_tbl[attack_index][i] * type_dmg_tbl[attack_index][j]
+                if rate < 1.49:
+                    result.append([types[i], types[j]])
+    return result
+
+
+def get_not_every_effective_types(attack_types):
+    result = None
+    for (attack_type, eff) in attack_types:
+        if result is None:
+            result = get_effectiveness_for_all_type(attack_type, eff)
+        else:
+            new_result = get_effectiveness_for_all_type(attack_type, eff)
+            result = [key for key in result if key in new_result]
+    return result
+
+def get_not_every_effective_list(attack_types):
+    result = defaultdict(lambda: {})
+    for key, poke in pokedex.items():
+        if key.endswith('totem') or key.endswith('gmax'):
+            continue
+        one_result = defaultdict(lambda: 0)
+        for (t, eff) in attack_types:
+            result2 = get_effectiveness_for_pokemon(poke, t, eff)
+            for ability in result2:
+                one_result[ability] = max(one_result[ability], result2[ability])
+        for ability in one_result:
+            if one_result[ability] < 1.49:
+                result[key][ability] = one_result[ability]
+    for value in result.values():
+        del_l = []
+        for key in value:
+            if key != 'default' and value[key] == value.get('default', -1):
+                del_l.append(key)
+        for key in del_l:
+            del value[key]
+    return dict(result)

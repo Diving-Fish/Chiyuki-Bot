@@ -1,8 +1,13 @@
 src/static
+private/
+imgcache/
+output/
 .idea
 .code
 venv
 .env
 __pycache__
 official_config.json
+russian_roulette_history.json
 *.log
+test_*

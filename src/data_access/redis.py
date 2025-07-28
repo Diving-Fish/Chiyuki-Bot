@@ -18,6 +18,11 @@ class RedisData:
     def set(self, data):
         self.data = data
 
+    def delete(self):
+        redis_global.delete(self.key)
+        self.data = None
+        self.submit_data = None
+
     def save(self, *args, ex=None, px=None, nx=False, xx=False):
         if len(args) != 0:
             self.set(args[0])

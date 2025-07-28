@@ -1,0 +1,25 @@
+{
+    "weathers": {
+        "晴天": "Sun",
+        "大晴天": "Sun",
+        "雨天": "Rain",
+        "下雨": "Rain",
+        "沙暴": "Sand",
+        "下雪": "Snow",
+        "雪天": "Snow",
+        "大日照": "Harsh Sunshine",
+        "大雨": "Heavy Rain",
+        "乱流": "Strong Winds"
+    },
+    "terrains": {
+        "电场": "Electric ter",
+        "电气场地": "Electric ter",
+        "草场": "Grassy ter",
+        "草地场地": "Grassy ter",
+        "青草场地": "Grassy ter",
+        "超场": "Psychic ter",
+        "精神场地": "Psychic ter",
+        "妖场": "Misty ter",
+        "薄雾场地": "Misty ter"
+    }
+}

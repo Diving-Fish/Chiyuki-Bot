@@ -1,4 +1,4 @@
-from nonebot import get_bot, on_command, on_regex
+from nonebot import get_bot, on_command, on_regex, get_driver
 from nonebot.params import CommandArg, EventMessage
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
@@ -46,7 +46,7 @@ fish_games = {}
 @scheduler.scheduled_job("cron", minute="*/1", jitter=30)
 async def try_spawn_fish():
     group_list = await get_bot().get_group_list()
-    print(group_list)
+    # print(group_list)
     # 如果不在 8 到 24 点则不尝试生成
     if 1 <= time.localtime().tm_hour < 8:
         return
@@ -60,12 +60,12 @@ async def try_spawn_fish():
         qq_list = [str(qq['user_id']) for qq in qq_list]
         game: FishGame = fish_games[group]
         game.update_average_power(qq_list)
-        print(f'{group} 尝试刷鱼')
+        # print(f'{group} 尝试刷鱼')
         if game.current_fish is not None:
             leave = game.count_down()
             if leave:
                 await get_bot().send_msg(message_type="group", group_id=group, message=f"鱼离开了...")
-        else:       
+        else:     
             fish = game.spawn_fish()
             if fish is not None:
                 if fish['rarity'] == 'UR':
@@ -251,3 +251,21 @@ async def _(event: Event):
         MessageSegment.reply(event.message_id),
         MessageSegment.text(s + res + simulate)
     ]))
+
+refresh_counts = on_command('饿鱼')
+
+@refresh_counts.handle()
+async def _(event: Event):
+    if str(event.user_id) not in get_driver().config.superusers:
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    game.data['feed_time'] = 0
+    game.save()
+    await refresh_counts.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text("已重置投放食料的计数")
+    ]))
+    return

@@ -47,7 +47,7 @@ def add_id_to_dict(data, uid):
         data['date'] = current_date
 
 
-on_reserve = on_regex(r"^(有没有|什么时候)(.+)$", rule=__group_checker)
+on_reserve = on_regex(r"^(有没有|什么时候)(.+)$", rule=__group_checker, block=False)
 
 @on_reserve.handle()
 async def _(event: Event, message: Message = EventMessage()):
@@ -58,7 +58,7 @@ async def _(event: Event, message: Message = EventMessage()):
     await on_reserve.send(f'已预约{name}，现在一共有{len(data["id"])}人')
     
 
-on_cancel = on_regex(r"^(没有(.+)|不(.+)了)$", rule=__group_checker)
+on_cancel = on_regex(r"^(没有(.+)|不(.+)了)$", rule=__group_checker, block=False)
 @on_cancel.handle()
 async def _(event: Event, message: Message = EventMessage()):
     regex = "^(没有(.+)|不(.+)了)"
@@ -73,7 +73,7 @@ async def _(event: Event, message: Message = EventMessage()):
             await on_cancel.send(f'不来以后都别来了')
 
 
-on_call = on_regex(r"^(.+)来人$", rule=__group_checker)
+on_call = on_regex(r"^(.+)来人$", rule=__group_checker, block=False)
 @on_call.handle()
 async def _(event: Event, message: Message = EventMessage()):
     regex = "^(.+)来人"

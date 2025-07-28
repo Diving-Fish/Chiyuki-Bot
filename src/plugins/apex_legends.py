@@ -196,4 +196,4 @@ async def apex_auto_update():
         except Exception:
             pass
 
-get_driver().on_startup(lambda: asyncio.get_running_loop().create_task(apex_auto_update()))
+# get_driver().on_startup(lambda: asyncio.get_running_loop().create_task(apex_auto_update()))
