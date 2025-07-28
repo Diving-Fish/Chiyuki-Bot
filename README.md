@@ -14,7 +14,7 @@
 
 建议使用 git 对此项目进行版本管理。您也可以直接在本界面下载代码的压缩包进行运行。
 
-在运行代码之前，您需要从[此链接](https://www.diving-fish.com/maibot/static.zip)下载资源文件并解压到`src`文件夹中。
+在运行代码之前，您需要从[此链接](https://www.diving-fish.com/chiyukibot/static.zip)下载资源文件并解压到`src`文件夹中。
 
 > 资源文件仅供学习交流使用，请自觉在下载 24 小时内删除资源文件。
 
