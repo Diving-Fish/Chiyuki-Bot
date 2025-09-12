@@ -139,5 +139,444 @@
         "power": 80,
         "description": "钻石打造的渔具，能够提升渔力",
         "price": 5000
+    },
+    {
+        "id": 205,
+        "name": "水之石",
+        "rarity": 3,
+        "description": "用于某些东西制造的石头。看上去是澄蓝色的。",
+        "price": 2000
+    },
+    {
+        "id": 206,
+        "name": "银色王冠",
+        "rarity": 3,
+        "description": "银色的美丽王冠。",
+        "price": 6600
+    },
+    {
+        "id": 207,
+        "name": "金色王冠",
+        "rarity": 4,
+        "description": "金色的美丽王冠。比银色王冠珍贵。",
+        "price": 68800
+    },
+    {
+        "id": 301,
+        "name": "古玉鱼的鳞片",
+        "rarity": 3,
+        "description": "古玉鱼身上掉落的炽热鳞片，触摸时能感受到炙热的温度。",
+        "price": 200
+    },
+    {
+        "id": 302,
+        "name": "古玉鱼的古玉",
+        "rarity": 4,
+        "description": "古玉鱼体内的神秘古玉，蕴含着强大的嫉妒之力。",
+        "price": 1000
+    },
+    {
+        "id": 303,
+        "name": "武道熊师的爪子",
+        "rarity": 3,
+        "description": "武道熊师锋利的爪子，经过无数次格斗训练变得坚硬无比。",
+        "price": 240
+    },
+    {
+        "id": 304,
+        "name": "水之挂轴",
+        "rarity": 4,
+        "description": "记录着水流奥义的古老挂轴，散发着淡淡的水汽。",
+        "price": 1200
+    },
+    {
+        "id": 305,
+        "name": "水君的鬃毛",
+        "rarity": 3,
+        "description": "水君飘逸的鬃毛，据说能净化任何污浊的水源。",
+        "price": 260
+    },
+    {
+        "id": 306,
+        "name": "水君的头饰",
+        "rarity": 4,
+        "description": "水君头顶的神圣装饰，象征着北风的力量。",
+        "price": 1300
+    },
+    {
+        "id": 307,
+        "name": "玛纳霏的源髓",
+        "rarity": 3,
+        "description": "玛纳霏体内的生命精华，蕴含着海洋的母性之爱。",
+        "price": 280
+    },
+    {
+        "id": 308,
+        "name": "玛纳霏的萤火",
+        "rarity": 4,
+        "description": "玛纳霏发出的温柔光芒，能照亮最深的海沟。",
+        "price": 1400
+    },
+    {
+        "id": 309,
+        "name": "洛奇亚的多重鳞片",
+        "rarity": 3,
+        "description": "洛奇亚身上的银白色鳞片，能抵御40天的暴风雨。",
+        "price": 300
+    },
+    {
+        "id": 310,
+        "name": "洛奇亚的尾鳍",
+        "rarity": 4,
+        "description": "洛奇亚强大的尾鳍，挥动时能掀起惊天巨浪。",
+        "price": 1500
+    },
+    {
+        "id": 311,
+        "name": "帕路奇亚的鳞片",
+        "rarity": 3,
+        "description": "帕路奇亚的空间鳞片，触摸时仿佛能感受到空间的扭曲。",
+        "price": 320
+    },
+    {
+        "id": 312,
+        "name": "大白宝玉",
+        "rarity": 4,
+        "description": "蕴含着空间之力的珍贵宝玉，能够操控空间的结构。",
+        "price": 1600
+    },
+    {
+        "id": 313,
+        "name": "盖欧卡的鳞片",
+        "rarity": 3,
+        "description": "盖欧卡巨大的蓝色鳞片，蕴含着扩展海洋的原始之力。",
+        "price": 400
+    },
+    {
+        "id": 314,
+        "name": "海皇玉",
+        "rarity": 4,
+        "description": "海洋之王的专属宝玉，能够召唤遮天蔽日的雨云。",
+        "price": 2000
+    },
+    {
+        "id": 315,
+        "name": "班基拉斯的角",
+        "rarity": 3,
+        "description": "班基拉斯头顶的坚硬尖角，能够轻易击碎山石。",
+        "price": 260
+    },
+    {
+        "id": 316,
+        "name": "烈咬陆鲨的鳞片",
+        "rarity": 3,
+        "description": "烈咬陆鲨锋利的鳞片，边缘如同剃刀般锐利。",
+        "price": 280
+    },
+    {
+        "id": 317,
+        "name": "古鼎",
+        "rarity": 3,
+        "description": "古鼎鹿身上掉落的神秘古鼎残片，蕴含着远古的力量。",
+        "price": 300
+    },
+    {
+        "id": 318,
+        "name": "基格尔德的细胞",
+        "rarity": 3,
+        "description": "基格尔德的生命细胞，具有监视生态环境的特殊能力。",
+        "price": 333
+    },
+    {
+        "id": 319,
+        "name": "大地宝玉",
+        "rarity": 4,
+        "description": "蕴含着大地之力的珍贵宝玉，能够感知地脉的流动。",
+        "price": 1665
+    },
+    {
+        "id": 320,
+        "name": "谢米的叶片",
+        "rarity": 3,
+        "description": "谢米身上的翠绿叶片，散发着清新的花草香气。",
+        "price": 200
+    },
+    {
+        "id": 321,
+        "name": "毕力吉翁的角",
+        "rarity": 3,
+        "description": "毕力吉翁锋利的角，代表着守护森林的坚定意志。",
+        "price": 220
+    },
+    {
+        "id": 322,
+        "name": "碧草面具",
+        "rarity": 3,
+        "description": "厄诡椪的碧草面具，似乎还残留着神秘的气息。",
+        "price": 240
+    },
+    {
+        "id": 323,
+        "name": "蕾冠王的王冠",
+        "rarity": 3,
+        "description": "蕾冠王华丽王冠的一部分，象征着至高无上的威严。",
+        "price": 260
+    },
+    {
+        "id": 324,
+        "name": "森之宝玉",
+        "rarity": 4,
+        "description": "森林之力凝聚而成的翠绿宝玉，生机盎然。",
+        "price": 1300
+    },
+    {
+        "id": 325,
+        "name": "波尔凯尼恩的蒸汽",
+        "rarity": 3,
+        "description": "波尔凯尼恩喷射的高温蒸汽，温度可达500度。",
+        "price": 280
+    },
+    {
+        "id": 326,
+        "name": "凤王的羽毛",
+        "rarity": 3,
+        "description": "凤王七彩羽毛的一片，据说能带来永恒的幸福。",
+        "price": 300
+    },
+    {
+        "id": 327,
+        "name": "莱希拉姆的火焰",
+        "rarity": 3,
+        "description": "莱希拉姆尾部燃烧的神圣火焰，永不熄灭。",
+        "price": 320
+    },
+    {
+        "id": 328,
+        "name": "固拉多的岩浆",
+        "rarity": 3,
+        "description": "固拉多体内的炽热岩浆，蕴含着大地的愤怒。",
+        "price": 340
+    },
+    {
+        "id": 329,
+        "name": "炎之宝玉",
+        "rarity": 4,
+        "description": "火焰力量的结晶，触摸时能感受到灼热的温度。",
+        "price": 1700
+    },
+    {
+        "id": 330,
+        "name": "雷电云的雷电",
+        "rarity": 3,
+        "description": "雷电云释放的强大闪电，蕴含着狂暴的电力。",
+        "price": 260
+    },
+    {
+        "id": 331,
+        "name": "土地云的大地",
+        "rarity": 3,
+        "description": "土地云带来的肥沃土壤，能让荒地重新焕发生机。",
+        "price": 280
+    },
+    {
+        "id": 332,
+        "name": "龙卷云的风暴",
+        "rarity": 3,
+        "description": "龙卷云制造的狂风，能够席卷一切阻挡之物。",
+        "price": 300
+    },
+    {
+        "id": 333,
+        "name": "裂空坐的鳞片",
+        "rarity": 3,
+        "description": "裂空坐翠绿的鳞片，据说能够平息天空的纷争。",
+        "price": 320
+    },
+    {
+        "id": 334,
+        "name": "天空宝玉",
+        "rarity": 4,
+        "description": "蕴含着天空之力的透明宝玉，轻盈如风。",
+        "price": 1600
+    },
+    {
+        "id": 335,
+        "name": "戟脊龙的化石",
+        "rarity": 3,
+        "description": "戟脊龙留下的古老化石，记录着远古冰河时代的记忆。",
+        "price": 280
+    },
+    {
+        "id": 336,
+        "name": "古剑豹的剑齿",
+        "rarity": 3,
+        "description": "古剑豹锋利的剑齿，在冰雪中依然寒光闪闪。",
+        "price": 300
+    },
+    {
+        "id": 337,
+        "name": "雪暴马的鬃毛",
+        "rarity": 3,
+        "description": "雪暴马飘逸的白色鬃毛，触摸时感觉异常冰冷。",
+        "price": 320
+    },
+    {
+        "id": 338,
+        "name": "酋雷姆的冰晶",
+        "rarity": 3,
+        "description": "酋雷姆制造的永恒冰晶，即使在炎热中也不会融化。",
+        "price": 340
+    },
+    {
+        "id": 339,
+        "name": "冰之宝玉",
+        "rarity": 4,
+        "description": "纯净冰雪凝聚而成的宝玉，散发着彻骨的寒意。",
+        "price": 1700
+    },
+    {
+        "id": 340,
+        "name": "玛机雅娜的齿轮",
+        "rarity": 3,
+        "description": "玛机雅娜精密的黄金齿轮，工艺巧夺天工。",
+        "price": 320
+    },
+    {
+        "id": 341,
+        "name": "铁头壳的装甲",
+        "rarity": 3,
+        "description": "铁头壳坚固的装甲片，即使高速撞击也不会损坏。",
+        "price": 340
+    },
+    {
+        "id": 342,
+        "name": "赛富豪的金币",
+        "rarity": 3,
+        "description": "赛富豪收集的珍贵金币，据说能带来财富。",
+        "price": 360
+    },
+    {
+        "id": 343,
+        "name": "帝牙卢卡的钻石",
+        "rarity": 3,
+        "description": "帝牙卢卡身上的时间钻石，蕴含着操控时间的力量。",
+        "price": 380
+    },
+    {
+        "id": 344,
+        "name": "钢之宝玉",
+        "rarity": 4,
+        "description": "钢铁意志凝聚而成的银色宝玉，坚不可摧。",
+        "price": 1900
+    },
+    {
+        "id": 345,
+        "name": "克雷色利亚的羽翼",
+        "rarity": 3,
+        "description": "克雷色利亚梦幻的羽翼，据说能驱散所有噩梦。",
+        "price": 320
+    },
+    {
+        "id": 346,
+        "name": "拉帝亚斯的玻璃",
+        "rarity": 3,
+        "description": "拉帝亚斯身上的透明羽毛，具有隐身的神奇效果。",
+        "price": 340
+    },
+    {
+        "id": 347,
+        "name": "拉帝欧斯的眼睛",
+        "rarity": 3,
+        "description": "拉帝欧斯深邃的眼珠，据说能看穿人心的想法。",
+        "price": 360
+    },
+    {
+        "id": 348,
+        "name": "超梦的表皮",
+        "rarity": 3,
+        "description": "超梦强化后的表皮细胞，蕴含着超越极限的力量。",
+        "price": 380
+    },
+    {
+        "id": 349,
+        "name": "超梦的基因",
+        "rarity": 4,
+        "description": "超梦完美的基因片段，包含着无尽的可能性。",
+        "price": 1900
+    },
+    {
+        "id": 401,
+        "name": "白金之心",
+        "rarity": 4,
+        "equipable": true,
+        "type": "tool",
+        "power": 80,
+        "description": "能够极大幅提升渔力",
+        "craftby": [
+            311, 311, 312, 205, 206
+        ],
+        "craft_score_cost": 4000
+    },
+    {
+        "id": 402,
+        "name": "水火卷轴",
+        "rarity": 4,
+        "equipable": true,
+        "type": "tool",
+        "power": 60,
+        "description": "大幅提升渔力的同时，捕鱼的经验值提升 10%",
+        "craftby": [
+            301, 302, 303, 304, 206
+        ],
+        "craft_score_cost": 4000
+    },
+    {
+        "id": 403,
+        "name": "海皇竿",
+        "rarity": 4,
+        "equipable": true,
+        "type": "rod",
+        "power": 100,
+        "description": "能够极大幅提升渔力，且鱼群出现时不受到渔力减弱的效果影响",
+        "craftby": [
+            314, 207
+        ],
+        "craft_score_cost": 20000
+    },
+    {
+        "id": 404,
+        "name": "奇怪的饵料",
+        "rarity": 4,
+        "description": "使用后，在 120 分钟内，【SSR】鱼的出现概率将极大幅提高",
+        "craftby": [
+            301, 303, 305, 307, 309, 311
+        ],
+        "craft_score_cost": 1000
+    },
+    {
+        "id": 405,
+        "name": "海神网",
+        "rarity": 4,
+        "equipable": true,
+        "type": "rod",
+        "power": 70,
+        "description": "能够大幅提升渔力，且鱼群出现时不受到渔力减弱的效果影响",
+        "craftby": [
+            310, 309, 309, 205, 205, 206
+        ],
+        "craft_score_cost": 4000
+    },
+    {
+        "id": 406,
+        "name": "水之手套",
+        "rarity": 4,
+        "equipable": true,
+        "type": "tool",
+        "power": 50,
+        "description": "大幅提升渔力，如果在鱼群期间还会额外提升 25 渔力",
+        "craftby": [
+            306, 305, 305, 205
+        ],
+        "craft_score_cost": 2000
     }
 ]

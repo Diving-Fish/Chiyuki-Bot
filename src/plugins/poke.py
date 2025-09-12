@@ -1,4 +1,6 @@
 import asyncio
+import random
+import aiohttp
 from nonebot import on_command, on_notice, get_driver
 from nonebot.params import CommandArg, EventMessage
 from nonebot.typing import T_State
@@ -7,9 +9,10 @@ from nonebot.exception import IgnoredException
 from nonebot.message import event_preprocessor
 from src.libraries.image import *
 from src.libraries.pokemon_img import get_image, get_not_every_effective_types, get_not_every_effective_list, pokedex
-from src.libraries.showdown_data_fetch import get_tier_score
+from src.libraries.showdown_data_fetch import get_tier_score, parse_pokemon_showdown_user_html, format_player_ratings
 from src.libraries.poke_dmg_calc import DamageCalc, types_cn, types, species_en2zh, abilities_en2zh
 from src.data_access.plugin_manager import plugin_manager
+from src.data_access.redis import redis_global
 import os
 import requests
 
@@ -170,4 +173,39 @@ async def _(event: Event, message: Message = CommandArg()):
     await nve.send(Message([
         MessageSegment.reply(event.message_id),
         MessageSegment.text(output)
+    ]))
+
+
+query_showdown = on_command("查ps", rule=__group_checker)
+
+@query_showdown.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    gid = getattr(event, "group_id", 0)
+    user_id = str(event.user_id)
+    if gid != 0:
+        if redis_global.exists(f'query_showdown_{gid}_{user_id}'):
+            await query_showdown.send("为防止刷屏，60秒内只能查询一次")
+            return
+    
+    username = str(message).strip().replace(' ', '').replace('-', '')
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'https://pokemonshowdown.com/users/{username}') as response:
+            if response.status == 200:
+                content = await response.text()
+                results = parse_pokemon_showdown_user_html(content)
+                await query_showdown.send(format_player_ratings(results))
+            elif response.status == 404:
+                await query_showdown.send(f'未找到玩家：{username}')
+            else:
+                await query_showdown.send(f"查询失败，状态码：{response.status}")
+    redis_global.setex(f'query_showdown_{gid}_{user_id}', 60, 1)
+    
+
+tricolor = on_command("抽三色")
+
+@tricolor.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    await tricolor.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text('，'.join(random.sample(types_cn[:-1], 3)))
     ]))

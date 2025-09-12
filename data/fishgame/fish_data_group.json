@@ -1,0 +1,912 @@
+[
+    {
+        "weekday": 1,
+        "topic": "沙漠",
+        "fish": [
+            {
+                "name": "太阳岩",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "隆隆岩",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "大岩蛇",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "钻角犀兽",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "巨炭山",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "庞岩怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "河马兽",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "流氓鳄",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "班基拉斯",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 315,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "烈咬陆鲨",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 316,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "古鼎鹿",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 317,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "基格尔德",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 318,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 319,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 2,
+        "topic": "森林",
+        "fish": [
+            {
+                "name": "毽子棉",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "保姆虫",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "热带龙",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "土台龟",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "败露球菇",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "坚果哑铃",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "轰擂金刚猩",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "妙蛙花",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "谢米",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 320,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "毕力吉翁",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 321,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "厄诡椪",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 322,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "蕾冠王",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 323,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 324,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 3,
+        "topic": "火山",
+        "fish": [
+            {
+                "name": "熔岩蜗牛",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "九尾",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "喷火龙",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "喷火驼",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "达摩狒狒",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "火焰鸟",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "水晶灯火灵",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "席多兰恩",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "波尔凯尼恩",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 325,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "凤王",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 326,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "莱希拉姆",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 327,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "固拉多",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 328,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 329,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 4,
+        "topic": "天空",
+        "fish": [
+            {
+                "name": "远古巨蜓",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "信使鸟",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "猫头夜鹰",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "钢铠鸦",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "化石翼龙",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "暴鲤龙",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "波克基斯",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "天蝎王",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "雷电云",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 330,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "土地云",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 331,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "龙卷云",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 332,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "裂空坐",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 333,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 334,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 5,
+        "topic": "雪山",
+        "fish": [
+            {
+                "name": "多多冰",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "白海狮",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "玛狃拉",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "帝牙海狮",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "冰鬼护",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "冰岩怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "浩大鲸",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "象牙猪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "戟脊龙",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 335,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "古剑豹",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 336,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "雪暴马",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 337,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "酋雷姆",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 338,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 339,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 6,
+        "topic": "金属",
+        "fish": [
+            {
+                "name": "齿轮怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "自爆磁怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "盔甲鸟",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "青铜钟",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "大王铜象",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "坚盾剑怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "铝钢龙",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "巨金怪",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "玛机雅娜",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 340,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "铁头壳",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 341,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "赛富豪",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 342,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "帝牙卢卡",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 343,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 344,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "weekday": 7,
+        "topic": "神秘",
+        "fish": [
+            {
+                "name": "呆呆王",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 100,
+                "base_probability": 0.0003,
+                "exp": 200
+            },
+            {
+                "name": "果然翁",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 120,
+                "base_probability": 0.0003,
+                "exp": 240
+            },
+            {
+                "name": "梦梦蚀",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 140,
+                "base_probability": 0.0003,
+                "exp": 280
+            },
+            {
+                "name": "智挥猩",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 160,
+                "base_probability": 0.0003,
+                "exp": 320
+            },
+            {
+                "name": "哥德小姐",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 180,
+                "base_probability": 0.0003,
+                "exp": 360
+            },
+            {
+                "name": "布莉姆温",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 200,
+                "base_probability": 0.0003,
+                "exp": 400
+            },
+            {
+                "name": "人造细胞卵",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 220,
+                "base_probability": 0.0003,
+                "exp": 440
+            },
+            {
+                "name": "沙奈朵",
+                "detail": "",
+                "rarity": "SR",
+                "std_power": 240,
+                "base_probability": 0.0003,
+                "exp": 480
+            },
+            {
+                "name": "克雷色利亚",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 260,
+                "base_probability": 0.0001,
+                "exp": 780,
+                "drops": [
+                    {
+                        "item_id": 345,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "拉帝亚斯",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 280,
+                "base_probability": 0.0001,
+                "exp": 840,
+                "drops": [
+                    {
+                        "item_id": 346,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "拉帝欧斯",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 300,
+                "base_probability": 0.0001,
+                "exp": 900,
+                "drops": [
+                    {
+                        "item_id": 347,
+                        "probability": 1
+                    }
+                ]
+            },
+            {
+                "name": "超梦",
+                "detail": "",
+                "rarity": "SSR",
+                "std_power": 333,
+                "base_probability": 0.00005,
+                "exp": 999,
+                "drops": [
+                    {
+                        "item_id": 348,
+                        "probability": 0.8
+                    },
+                    {
+                        "item_id": 349,
+                        "probability": 0.2
+                    }
+                ]
+            }
+        ]
+    }
+]

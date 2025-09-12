@@ -441,6 +441,7 @@ def get_image(pokename, force_generate=False):
     draw.rounded_rectangle((16, 16, 1200 - 16, current_y + 50 - 16), 20, tc2(data["type"][0]))
 
     im2.paste(im.crop((0, 0, 1200, current_y)), (0, 0))
+    im2.save(filepath)
 
     return im2
 

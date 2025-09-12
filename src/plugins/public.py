@@ -52,19 +52,29 @@ async def _(bot: Bot, event: Event, state: T_State):
     if is_channel_message(event):
         await cuid.send('您的频道 ID 为： ' + str(event.user_id))
 
-rdm = on_command('random')
+rdm = on_command('random', aliases={'rd'})
 
 @rdm.handle()
 async def _(bot: Bot, event: Event, message: Message = CommandArg()):
     try:
-        arg = int(str(message).strip())
+        msg = str(message).strip()
+        if 'd' in msg:
+            dice_count, dict_faces = [int(v) for v in msg.split('d')]
+            if dict_faces <= 0:
+                await rdm.send('error')
+                return
+            value = [random.randint(1, dict_faces) for _ in range(dice_count)]
+            sum_value = sum(value)
+            await rdm.send(f'掷骰结果：{value}，总和：{sum_value}')
+        else:
+            arg = int(msg)
+            if arg <= 0:
+                await rdm.send('error')
+                return
+            await rdm.send(f'掷骰结果：{str(random.randint(1, arg))}')
     except Exception:
         await rdm.send('error')
         return
-    if arg <= 0:
-        await rdm.send('error')
-        return
-    await rdm.send(str(random.randint(1, arg)))
 
 
 help = on_command('help')
