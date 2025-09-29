@@ -383,8 +383,10 @@ def computeRa(ds: float, achievement: float) -> int:
         baseRa = 20.8 
     elif achievement < 100:
         baseRa = 21.1 
+    elif achievement < 100.4999:
+        baseRa = 21.6
     elif achievement < 100.5:
-        baseRa = 21.6 
+        baseRa = 22.2 
 
     return math.floor(ds * (min(100.5, achievement) / 100) * baseRa)
 
