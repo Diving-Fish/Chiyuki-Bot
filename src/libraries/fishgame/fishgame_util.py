@@ -1,10 +1,79 @@
 from PIL import Image, ImageDraw, ImageFont
-import textwrap
-from src.libraries.fishgame.data import FishItem, Fish, Backpack
-from src.libraries.fishgame.fishgame import FishPlayer, FishGame
+from src.libraries.fishgame.data import FishItem, Fish, Backpack, get_skill, fish_skills
+from src.libraries.fishgame.fishgame import FishPlayer, FishGame, talent_data
+from src.libraries.fishgame.buildings import *
 import math
 from io import BytesIO
 import aiohttp
+import time
+
+
+def get_item_type_text(item_type):
+    if item_type == "tool":
+        type_text = "工具"
+    elif item_type == "rod":
+        type_text = "渔具"
+    elif item_type == "accessory":
+        type_text = "配件"
+    else:
+        type_text = item_type
+    return type_text
+
+
+def wrap_text(text, font, max_width, draw):
+    """
+    手动文本换行函数
+    
+    参数:
+        text: 要换行的文本
+        font: 字体对象
+        max_width: 最大宽度（像素）
+        draw: ImageDraw对象，用于计算文本宽度
+    
+    返回:
+        list: 换行后的文本行列表
+    """
+    lines = []
+    
+    # 首先按照 \n 分割文本
+    paragraphs = text.split('\n')
+    
+    for paragraph in paragraphs:
+        if not paragraph:  # 空行
+            lines.append("")
+            continue
+            
+        current_line = ""
+        
+        for char in paragraph:
+            test_line = current_line + char
+            line_width = draw.textlength(test_line, font=font)
+            
+            if line_width <= max_width:
+                current_line = test_line
+            else:
+                if current_line:  # 如果当前行不为空，添加到结果中
+                    lines.append(current_line)
+                current_line = char
+        
+        if current_line:  # 添加段落的最后一行
+            lines.append(current_line)
+        
+    return lines
+
+# 获取稀有度对应的颜色
+def get_rarity_color(rarity):
+    if rarity == 1:
+        return (255, 255, 255)  # 普通 - 白色
+    elif rarity == 2:
+        return (139, 233, 253)  # 稀有 - 蓝色
+    elif rarity == 3:
+        return (255, 121, 198)  # 史诗 - 紫色
+    elif rarity == 4:
+        return (241, 250, 140)  # 传说 - 黄色
+    elif rarity == 5:
+        return (255, 85, 85)    # 神话 - 红色
+    return (255, 255, 255)      # 默认 - 白色
 
 async def get_qq_avatar(qq_number: int, size: int = 160) -> Image.Image:
     """
@@ -46,9 +115,9 @@ async def get_qq_avatar(qq_number: int, size: int = 160) -> Image.Image:
     except IOError as e:
         raise IOError(f"图片处理错误: {e}")
 
-def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game=None):
+def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: FishGame=None):
     # 创建一个800x800的图像 (增加高度以容纳图鉴)
-    width, height = 800, 800
+    width, height = 800, 860
     image = Image.new("RGB", (width, height), (40, 42, 54))  # 深色背景
     draw = ImageDraw.Draw(image)
     
@@ -70,17 +139,18 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game=Non
     draw.rectangle([(60, 70), (60+avatar_size, 70+avatar_size)], fill=(98, 114, 164), outline=(189, 147, 249), width=2)
 
     # bilt avatar
-    avatar_img = avatar_img.resize((avatar_size, avatar_size))
-    image.paste(avatar_img, (60, 70))
-    
+    if avatar_img:
+        avatar_img = avatar_img.resize((avatar_size, avatar_size))
+        image.paste(avatar_img, (60, 70))
+        
     # 基本信息
     draw.text((150, 67), player.name, fill=(248, 248, 242), font=header_font)
     
     # fever期间显示fever_power，否则显示普通power
     if game and game.is_fever:
-        draw.text((150, 92), f"渔力: {player.fever_power} (鱼群状态)", fill=(255, 215, 0), font=regular_font)
+        draw.text((150, 92), f"渔力: {player.fever_power + game.big_pot.power_boost} (鱼群状态)", fill=(255, 215, 0), font=regular_font)
     else:
-        draw.text((150, 92), f"渔力: {player.power}", fill=(248, 248, 242), font=regular_font)
+        draw.text((150, 92), f"渔力: {player.power + game.big_pot.power_boost}", fill=(248, 248, 242), font=regular_font)
     
     draw.text((150, 112), f"经验: {player.exp}/{player.get_target_exp(player.level)}", 
              fill=(248, 248, 242), font=regular_font)
@@ -99,13 +169,14 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game=Non
     draw.text((width-60, 125), f"积分: {player.score}", fill=(241, 250, 140), font=header_font, anchor="rt")
     
     # 装备区域
-    draw.rectangle([(50, 170), (width-50, 300)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
+    draw.rectangle([(50, 170), (width-50, 360)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
     draw.text((60, 180), "当前装备", fill=(189, 147, 249), font=header_font)
     
     # 定义装备栏位置
     equipment_slots = [
         {"name": "渔具", "x": 70, "y": 210, "item": player.equipment.rod},
-        {"name": "工具", "x": 70, "y": 250, "item": player.equipment.tool}
+        {"name": "工具", "x": 70, "y": 250, "item": player.equipment.tool},
+        {"name": "配件", "x": 70, "y": 290, "item": player.equipment.accessory}
     ]
     
     # 绘制装备栏
@@ -116,29 +187,33 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game=Non
         item: FishItem = slot["item"]
         if item:
             # 获取稀有度对应的颜色
-            rarity_color = (255, 255, 255)  # 默认白色
-            if item.rarity == 2:
-                rarity_color = (139, 233, 253)  # 稀有 - 蓝色
-            elif item.rarity == 3:
-                rarity_color = (255, 121, 198)  # 史诗 - 紫色
-            elif item.rarity == 4:
-                rarity_color = (241, 250, 140)  # 传说 - 黄色
-                
+            rarity_color = get_rarity_color(item.rarity)
             # 绘制装备信息
             item_text = f"{item.name} (渔力+{item.power})"
             draw.text((slot["x"]+60, slot["y"]), item_text, fill=rarity_color, font=regular_font)
             
             # 显示装备描述
             desc = item.description
-            wrapped_desc = textwrap.wrap(desc, width=60)
+            wrapped_desc = wrap_text(desc, small_font, 400, draw)
+            line_offset = 20
             if wrapped_desc:
-                draw.text((slot["x"]+60, slot["y"]+20), wrapped_desc[0], fill=(248, 248, 242), font=small_font)
+                draw.text((slot["x"]+60, slot["y"]+line_offset), wrapped_desc[0], fill=(248, 248, 242), font=small_font)
+                line_offset += 18
+            # 如果是配件，显示技能
+            xoffset = 0
+            if slot['name'] == '配件' and getattr(item, 'skills', []):
+                for sk in item.skills:
+                    sk_obj = get_skill(sk['id'])
+                    if sk_obj:
+                        draw.text((slot["x"]+60+xoffset, slot["y"]+line_offset), f"{sk_obj.name} Lv{sk['level']}", fill=(189,147,249), font=small_font)
+                        xoffset += 10 + draw.textlength(f"{sk_obj.name} Lv{sk['level']}", font=small_font)
         else:
             draw.text((slot["x"]+60, slot["y"]), "未装备", fill=(98, 114, 164), font=regular_font)
     
-    # 图鉴区域
-    draw.rectangle([(50, 310), (width-50, height-50)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
-    draw.text((60, 320), "图鉴", fill=(189, 147, 249), font=header_font)
+    # 若新增配件栏导致高度不足，向下平移图鉴起点
+    pokedex_top = 370
+    draw.rectangle([(50, pokedex_top), (width-50, height-50)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
+    draw.text((60, pokedex_top + 10), "图鉴", fill=(189, 147, 249), font=header_font)
     
     # 创建图鉴内容
     create_pokedex_content(draw, player, game, font_dict={
@@ -183,9 +258,9 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
     
     # 显示完成率
     completion_rate = (total_caught / total_fish_count) * 100
-    draw.text((60, 350), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)", 
+    draw.text((60, 350 + 60), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)", 
              fill=(241, 250, 140), font=regular_font)
-    draw.text((60, 375), f"基础鱼: {base_fish_caught}/{base_fish_count}  鱼群鱼: {group_fish_caught}/{group_fish_count}", 
+    draw.text((60, 375 + 60), f"基础鱼: {base_fish_caught}/{base_fish_count}  鱼群鱼: {group_fish_caught}/{group_fish_count}", 
              fill=(248, 248, 242), font=small_font)
     
     # 获取今日鱼群主题
@@ -193,7 +268,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
     today_topic = weekday_topic[current_weekday] if current_weekday < len(weekday_topic) else ""
     
     # 绘制基础鱼图鉴 (4列显示)
-    y_start = 410
+    y_start = 410 + 60
     draw.text((60, y_start), "基础鱼:", fill=(189, 147, 249), font=header_font)
     
     # 显示基础鱼 (每排4个)
@@ -277,7 +352,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
             draw.text((x, y), f"{fish.id}. {display_name}", fill=color, font=small_font)
 
 
-def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
+def create_inventory_panel(items_data, page, max_page, equipped_item_ids, player: FishPlayer=None):
     width, height = 800, 600
     image = Image.new('RGB', (width, height), (40, 42, 54))  # 深色背景
     draw = ImageDraw.Draw(image)
@@ -292,17 +367,6 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
     # 绘制标题和边框
     draw.text((width//2, 45), "背包", fill=(248, 248, 242), font=title_font, anchor="mm")
     draw.rectangle([(40, 10), (width-40, height-10)], outline=(98, 114, 164), width=2)
-    
-    def get_rarity_color(rarity):
-        if rarity == 1:
-            return (255, 255, 255)  # 普通 - 白色
-        elif rarity == 2:
-            return (139, 233, 253)  # 稀有 - 蓝色
-        elif rarity == 3:
-            return (255, 121, 198)  # 史诗 - 紫色
-        elif rarity == 4:
-            return (241, 250, 140)  # 传说 - 黄色
-        return (255, 255, 255)
     
     # 绘制背包栏位
     slots_per_row = 2
@@ -330,7 +394,16 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
         item_name = item.name + (f" ×{count}" if count > 1 else "")
         item_rarity = item.rarity
         item_desc = item.description
+        if item.type == 'accessory':
+            item_desc = ''
+            skills = item.skills
+            for skill in skills:
+                skill_obj = fish_skills.get(skill['id'])
+                if skill_obj:
+                    item_desc += f"{skill_obj.name}({skill['level']}) "
         is_equipable = item.equipable
+        # 配件特殊标记
+        is_accessory = (item.type == 'accessory')
         
         # 绘制物品栏背景
         rarity_color = get_rarity_color(item_rarity)
@@ -356,12 +429,7 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
             item_type = item.type
             
             # 装备类型中文转换
-            if item_type == "tool":
-                type_text = "工具"
-            elif item_type == "rod":
-                type_text = "渔具"
-            else:
-                type_text = item_type
+            type_text = get_item_type_text(item_type)
 
             if item.id in equipped_item_ids:
                 equip_text = f"[已装备] 类型: {type_text} | 渔力: {power}"
@@ -370,6 +438,16 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
                 equip_text = f"[可装备] 类型: {type_text} | 渔力: {power}"
                 draw.text((name_x, current_y), equip_text, fill=(80, 250, 123), font=small_font)
             current_y += 18
+            # 显示配件技能
+            if is_accessory and player is not None:
+                meta = player.data.get('accessory_meta', {}).get(str(item.id), {})
+                for sk in meta.get('skills', [])[:3]:
+                    sk_obj = get_skill(sk.get('id'))
+                    if not sk_obj:
+                        continue
+                    sk_level = sk.get('level')
+                    draw.text((name_x, current_y), f"{sk_obj.name} Lv{sk_level}", fill=(189,147,249), font=small_font)
+                    current_y += 16
         
         # 物品描述（处理换行）
         desc_width = x2 - name_x - 10  # 描述文本可用宽度
@@ -396,13 +474,13 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids):
     
     return image
 
-def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, player_score: int = 0):
+def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, player: FishPlayer = None):
     """创建合成面板"""
     # 基本设置
     padding = 20
     item_width = 300
-    item_height = 280
-    items_per_row = 2
+    item_height = 320
+    items_per_row = 5
     
     # 计算面板尺寸
     items_count = len(craftable_items)
@@ -424,38 +502,6 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
     # 绘制标题
     draw.text((width/2, 40), "合成工坊", fill=(248, 248, 242), font=title_font, anchor="mm")
     draw.line([(padding, 80), (width-padding, 80)], fill=(98, 114, 164), width=2)
-    
-    # 获取稀有度对应的颜色
-    def get_rarity_color(rarity):
-        if rarity == 1:
-            return (255, 255, 255)   # 白色 - 普通
-        elif rarity == 2:
-            return (80, 250, 123)    # 绿色 - 稀有
-        elif rarity == 3:
-            return (189, 147, 249)   # 紫色 - 史诗
-        elif rarity == 4:
-            return (255, 184, 108)   # 橙色 - 传说
-        return (255, 255, 255)
-    
-    # 手动文本换行函数
-    def wrap_text(text, font, max_width):
-        lines = []
-        current_line = ""
-        
-        for char in text:
-            test_line = current_line + char
-            line_width = draw.textlength(test_line, font=font)
-            
-            if line_width <= max_width:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                current_line = char
-        
-        if current_line:  # 添加最后一行
-            lines.append(current_line)
-            
-        return lines
     
     # 绘制合成物品
     for i, item in enumerate(craftable_items):
@@ -487,12 +533,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
             item_type = item.type
             
             # 装备类型中文转换
-            if item_type == "tool":
-                type_text = "工具"
-            elif item_type == "rod":
-                type_text = "渔具"
-            else:
-                type_text = item_type
+            type_text = get_item_type_text(item_type)
 
             equip_text = f"类型: {type_text} | 渔力: +{power}"
             draw.text((x + 80, current_text_y), equip_text, fill=(80, 250, 123), font=small_font)
@@ -500,7 +541,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
         
         # 物品描述（使用手动换行函数）
         max_desc_width = item_width - 90
-        wrapped_desc = wrap_text(item.description, small_font, max_desc_width)
+        wrapped_desc = wrap_text(item.description, small_font, max_desc_width, draw)
         
         # 最多显示2行描述
         for j, line in enumerate(wrapped_desc[:2]):
@@ -564,6 +605,10 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
                     draw.text((x + 15, material_y), "...", 
                              fill=(248, 248, 242), font=small_font)
                     break
+
+        craft_score_cost = item.craft_score_cost
+        if item.id == 14:
+            craft_score_cost *= 2 ** player.master_ball_crafts
         
         # 显示积分消耗（如果需要）
         if item.craft_score_cost > 0:
@@ -575,11 +620,11 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
             material_y += 25
             
             # 显示积分消耗和玩家当前积分
-            score_text = f"需要积分: {item.craft_score_cost}"
-            current_score_text = f"当前: {player_score}"
+            score_text = f"需要积分: {craft_score_cost}"
+            current_score_text = f"当前: {player.score}"
             
             # 根据积分是否充足选择颜色
-            if player_score >= item.craft_score_cost:
+            if player.score >= craft_score_cost:
                 score_color = (80, 250, 123)  # 绿色 - 足够
             else:
                 score_color = (255, 85, 85)   # 红色 - 不足
@@ -625,38 +670,6 @@ def create_gacha_panel(items_data):
     # 绘制标题
     draw.text((width/2, 40), "抽卡结果", fill=(248, 248, 242), font=title_font, anchor="mm")
     draw.line([(padding, 80), (width-padding, 80)], fill=(98, 114, 164), width=2)
-    
-    # 获取稀有度对应的颜色
-    def get_rarity_color(rarity):
-        if rarity == 1:
-            return (255, 255, 255)  # 普通 - 白色
-        elif rarity == 2:
-            return (139, 233, 253)  # 稀有 - 蓝色
-        elif rarity == 3:
-            return (255, 121, 198)  # 史诗 - 紫色
-        elif rarity == 4:
-            return (241, 250, 140)  # 传说 - 黄色
-        return (255, 255, 255)      # 默认 - 白色
-    
-    # 手动文本换行函数
-    def wrap_text(text, font, max_width):
-        lines = []
-        current_line = ""
-        
-        for char in text:
-            test_line = current_line + char
-            line_width = draw.textlength(test_line, font=font)
-            
-            if line_width <= max_width:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                current_line = char
-        
-        if current_line:  # 添加最后一行
-            lines.append(current_line)
-            
-        return lines
     
     # 绘制抽卡结果项目
     for i, item in enumerate(items_data):
@@ -721,12 +734,7 @@ def create_gacha_panel(items_data):
             item_type = item['type']
             
             # 装备类型中文转换
-            if item_type == "tool":
-                type_text = "工具"
-            elif item_type == "rod":
-                type_text = "渔具"
-            else:
-                type_text = item_type
+            type_text = get_item_type_text(item_type)
                 
             equip_text = f"{type_text} | 渔力+{power}"
             draw.text((x+item_width//2, name_y+25), equip_text, 
@@ -737,7 +745,7 @@ def create_gacha_panel(items_data):
         
         # 设置最大文本宽度略小于项目宽度
         max_text_width = item_width - 20
-        wrapped_text = wrap_text(item_desc, small_font, max_text_width)
+        wrapped_text = wrap_text(item_desc, small_font, max_text_width, draw)
         
         # 最多显示3行描述
         for j, line in enumerate(wrapped_text[:3]):
@@ -817,38 +825,6 @@ def create_shop_panel(shop_items: list[FishItem]):
     draw.text((width/2, 40), "金币商城", fill=(248, 248, 242), font=title_font, anchor="mm")
     draw.line([(padding, 80), (width-padding, 80)], fill=(98, 114, 164), width=2)
     
-    # 获取稀有度对应的颜色
-    def get_rarity_color(rarity):
-        if rarity == 1:
-            return (255, 255, 255)  # 普通 - 白色
-        elif rarity == 2:
-            return (139, 233, 253)  # 稀有 - 蓝色
-        elif rarity == 3:
-            return (255, 121, 198)  # 史诗 - 紫色
-        elif rarity == 4:
-            return (241, 250, 140)  # 传说 - 黄色
-        return (255, 255, 255)      # 默认 - 白色
-    
-    # 手动文本换行函数
-    def wrap_text(text, font, max_width):
-        lines = []
-        current_line = ""
-        
-        for char in text:
-            test_line = current_line + char
-            line_width = draw.textlength(test_line, font=font)
-            
-            if line_width <= max_width:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                current_line = char
-        
-        if current_line:  # 添加最后一行
-            lines.append(current_line)
-            
-        return lines
-    
     # 绘制商品
     for i, item in enumerate(shop_items):
         row = i // items_per_row
@@ -897,12 +873,7 @@ def create_shop_panel(shop_items: list[FishItem]):
             item_type = item.type
             
             # 装备类型中文转换
-            if item_type == "tool":
-                type_text = "工具"
-            elif item_type == "rod":
-                type_text = "渔具"
-            else:
-                type_text = item_type
+            type_text = get_item_type_text(item_type)
                 
             equip_text = f"{type_text} | 渔力+{power}"
             draw.text((x+item_width//2, name_y+20), equip_text, 
@@ -913,7 +884,7 @@ def create_shop_panel(shop_items: list[FishItem]):
         
         # 设置最大文本宽度略小于项目宽度
         max_text_width = item_width - 20
-        wrapped_text = wrap_text(item_desc, small_font, max_text_width)
+        wrapped_text = wrap_text(item_desc, small_font, max_text_width, draw)
         
         # 最多显示2行描述（商店里需要给价格留位置）
         for j, line in enumerate(wrapped_text[:3]):
@@ -985,4 +956,316 @@ def create_shop_panel(shop_items: list[FishItem]):
     #          balance_text, fill=(255, 184, 108), 
     #          font=regular_font, anchor="rm")
     
+    return image
+
+
+def create_buildings_panel(game: FishGame):
+    """创建建筑面板"""
+    # 初始化建筑
+    game.init_buildings()
+    
+    # 获取所有建筑
+    buildings: list[BuildingBase] = [
+        game.big_pot,
+        game.fish_factory,
+        game.building_center,
+        game.fish_lab,
+        game.ice_hole,
+        game.mystic_shop,
+        game.seven_statue,
+        game.forge_shop
+    ]
+    
+    # 基本设置
+    padding = 25
+    building_width = 475  # 提升25%: 380 * 1.25 = 475
+    building_height = 400  # 提升25%: 280 * 1.25 = 350
+    buildings_per_row = 2
+    
+    # 计算面板尺寸
+    rows = len(buildings) // buildings_per_row
+    width = padding + (building_width + padding) * buildings_per_row
+    height = 100 + (building_height + padding) * rows + 80
+    
+    # 创建图像和绘图对象
+    image = Image.new('RGB', (width, height), color=(40, 42, 54))
+    draw = ImageDraw.Draw(image)
+    
+    # 加载字体 (提升25%)
+    font_path = "src/static/poke/LXGWWenKai-Regular.ttf"
+    title_font = ImageFont.truetype(font_path, 40)  # 32 * 1.25 = 40
+    header_font = ImageFont.truetype(font_path, 23)  # 18 * 1.25 = 22.5 ≈ 23
+    regular_font = ImageFont.truetype(font_path, 20)  # 16 * 1.25 = 20
+    small_font = ImageFont.truetype(font_path, 18)  # 14 * 1.25 = 17.5 ≈ 18
+    tiny_font = ImageFont.truetype(font_path, 15)  # 12 * 1.25 = 15
+    
+    # 绘制标题
+    draw.text((width/2, 40), "建筑管理", fill=(248, 248, 242), font=title_font, anchor="mm")
+    
+    # 绘制建筑卡片
+    for i, building in enumerate(buildings):
+        row = i // buildings_per_row
+        col = i % buildings_per_row
+        
+        x = padding + col * (building_width + padding)
+        y = 80 + row * (building_height + padding)
+        
+        # 建筑卡片背景
+        card_color = (68, 71, 90)
+        if building.level >= building.max_level:
+            card_color = (90, 90, 68)  # 已满级，金色背景
+        elif building.can_upgrade():
+            card_color = (68, 90, 71)  # 可升级，绿色背景
+        
+        draw.rectangle([(x, y), (x + building_width, y + building_height)], 
+                      fill=card_color, outline=(98, 114, 164), width=2)
+        
+        # 建筑名称和等级
+        level_text = f"Lv.{building.level}"
+        if building.level >= building.max_level:
+            level_text += " (MAX)"
+        
+        draw.text((x + 19, y + 19), building.name, fill=(189, 147, 249), font=header_font)  # 调整间距
+        draw.text((x + building_width - 19, y + 19), level_text, 
+                 fill=(241, 250, 140), font=header_font, anchor="rt")
+        
+        # 建筑描述
+        description = building.description
+        y_offset = y + 50  # 调整间距
+        
+        # 处理描述换行显示
+        lines = wrap_text(description, tiny_font, building_width - 38, draw)  # 调整文本宽度
+        for line in lines[:4]:  # 最多显示3行
+            draw.text((x + 19, y_offset), line, fill=(150, 150, 150), font=tiny_font)
+            y_offset += 16  # 调整行间距
+        
+        y_offset += 10  # 描述和效果之间的间距
+        
+        # 当前等级效果
+        current_desc = ""
+        if building.level > 0:
+            current_desc = building.level_effect_desc(building.level)
+        else:
+            current_desc = "未建造"
+        
+        # 处理当前效果换行
+        current_lines = wrap_text(f"当前效果：{current_desc}", small_font, building_width - 38, draw)
+        for line in current_lines:
+            draw.text((x + 19, y_offset), line, fill=(248, 248, 242), font=small_font)
+            y_offset += 20  # 调整行间距
+        
+        # 下一级效果
+        if building.level < building.max_level:
+            next_desc = building.level_effect_desc(building.level + 1)
+            next_lines = wrap_text(f"下级效果：{next_desc}", small_font, building_width - 38, draw)
+            for line in next_lines:
+                draw.text((x + 19, y_offset), line, fill=(150, 200, 255), font=small_font)
+                y_offset += 20  # 调整行间距
+        
+        y_offset += 6  # 效果和条件之间的间距
+        
+        # 根据剩余空间判断是否显示详细信息
+        remaining_space = y + building_height - y_offset - 30
+        
+        if building.level < building.max_level:
+            # 前置建筑要求
+            prerequisites = building.get_level_prerequisites(building.level + 1)
+            if prerequisites and remaining_space > 60:  # 调整空间判断
+                draw.text((x + 19, y_offset), "前置条件:", fill=(255, 184, 108), font=small_font)
+                y_offset += 20  # 调整间距
+                
+                for prereq_building, required_level in prerequisites.items():
+                    # 获取对应建筑的当前等级
+                    current_prereq_level = 0
+                    prereq_building_name = ""
+                    if prereq_building == 'big_pot':
+                        current_prereq_level = game.big_pot.level
+                        prereq_building_name = "大锅"
+                    elif prereq_building == 'ice_hole':
+                        current_prereq_level = game.ice_hole.level
+                        prereq_building_name = "冰洞"
+                    elif prereq_building == 'mystic_shop':
+                        current_prereq_level = game.mystic_shop.level
+                        prereq_building_name = "神秘商店"
+                    
+                    status_color = (80, 250, 123) if current_prereq_level >= required_level else (255, 85, 85)
+                    prereq_text = f"{prereq_building_name}: Lv.{current_prereq_level}/{required_level}"
+                    draw.text((x + 31, y_offset), prereq_text, 
+                             fill=status_color, font=tiny_font)
+                    y_offset += 18  # 调整行间距
+                
+                y_offset += 6  # 前置条件和材料之间的间距
+            
+            # 材料需求状态
+            if y_offset + 25 < y + building_height - 38:  # 确保有足够空间显示材料
+                materials_status = building.get_materials_status()
+                
+                draw.text((x + 19, y_offset), "升级材料:", fill=(189, 147, 249), font=small_font)
+                y_offset += 20  # 调整间距
+                
+                for request, current_count in materials_status:
+                    if y_offset + 16 > y + building_height - 19:  # 防止文本溢出
+                        draw.text((x + 31, y_offset), "...", fill=(150, 150, 150), font=tiny_font)
+                        break
+                    
+                    status_color = (80, 250, 123) if current_count >= request.count else (255, 85, 85)
+                    material_text = f"{request.desc}: {current_count}/{request.count}"
+                    draw.text((x + 31, y_offset), material_text, 
+                             fill=status_color, font=tiny_font)
+                    y_offset += 18  # 调整行间距
+        else:
+            draw.text((x + 19, y_offset), "建筑已达到最高等级", 
+                     fill=(241, 250, 140), font=small_font)
+    
+    # 底部提示信息
+    draw.text((width/2, height-31), "Usage: 建筑 <建筑名称> <材料编号> 或者 建筑 <建筑名称> 升级", 
+             fill=(98, 114, 164), font=regular_font, anchor="mm")
+    
+    return image
+
+
+# ---------------- Talent Panel ----------------
+def _format_talent_detail(talent_obj: dict, level: int) -> str:
+    """Format talent detail string using effect values at given level.
+    If key contains 'percent' and value <= 1, multiply by 100 for display.
+    """
+    detail_tpl = talent_obj.get('detail', '')
+    eff = {}
+    for k, arr in talent_obj.get('effect', {}).items():
+        if not isinstance(arr, list) or level <= 0:
+            continue
+        idx = min(level - 1, len(arr) - 1)
+        val = arr[idx]
+        if ('percent' in k) and isinstance(val, (int, float)):
+            # Special-case: 渔力会心( talent id == 8 ) uses absolute percent values per点
+            # e.g., 0.01 means 0.01% (not 1%), so DO NOT multiply by 100 here
+            if not (talent_obj.get('id') == 8 and k == 'crit_percent'):
+                if val <= 1:
+                    val = round(val * 100, 2)
+        eff[k] = val
+    try:
+        return detail_tpl.format(**eff) if detail_tpl else ''
+    except Exception:
+        return detail_tpl
+
+
+def create_talent_panel(player: FishPlayer, game: FishGame = None):
+    """绘制天赋面板，仅显示当前等级与下一等级的 detail 效果，以及经验条。"""
+    padding = 20
+    card_w = 360
+    card_h = 190
+    gap = 16
+    per_row = 2
+
+    count = len(talent_data)
+    rows = max(1, math.ceil(count / per_row))
+    width = padding + (card_w + gap) * min(per_row, max(1, count)) - gap + padding
+    height = 100 + (card_h + gap) * rows + padding
+
+    image = Image.new('RGB', (width, height), (40, 42, 54))
+    draw = ImageDraw.Draw(image)
+
+    # Fonts
+    font_path = "src/static/poke/LXGWWenKai-Regular.ttf"
+    title_font = ImageFont.truetype(font_path, 32)
+    header_font = ImageFont.truetype(font_path, 18)
+    regular_font = ImageFont.truetype(font_path, 16)
+    small_font = ImageFont.truetype(font_path, 14)
+
+    # Title
+    draw.text((width/2, 40), "天赋面板", fill=(248, 248, 242), font=title_font, anchor="mm")
+    draw.line([(padding, 70), (width - padding, 70)], fill=(98, 114, 164), width=2)
+
+    # Cards
+    for idx, t in enumerate(talent_data):
+        r = idx // per_row
+        c = idx % per_row
+        x0 = padding + c * (card_w + gap)
+        y0 = 100 + r * (card_h + gap)
+        x1 = x0 + card_w
+        y1 = y0 + card_h
+        draw.rectangle([(x0, y0), (x1, y1)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
+
+        tid = t.get('id')
+        status = player.get_talent_status(tid)
+        name = t.get('name', f'Talent {tid}')
+        level_text = f"Lv.{status['level']}/{status['max_level']}"
+
+        # Header
+        draw.text((x0 + 10, y0 + 10), name, fill=(189, 147, 249), font=header_font)
+        draw.text((x1 - 10, y0 + 10), level_text, fill=(241, 250, 140), font=header_font, anchor="rt")
+        # Talent ID
+        draw.text((x0 + 10, y0 + 30), f"ID: {tid}", fill=(200, 200, 200), font=small_font)
+
+        # Only show current and next level detail (hide desc) with auto-wrap
+        cur_lv = status['level']
+        max_lv = status['max_level']
+        # 当前等级的效果
+        cur_detail = _format_talent_detail(t, cur_lv) if cur_lv > 0 else ''
+        if not cur_detail:
+            cur_detail = '无'
+        # 下一等级的效果
+        if cur_lv < max_lv:
+            next_detail = _format_talent_detail(t, cur_lv + 1)
+        else:
+            next_detail = '已满级'
+
+        max_text_width = card_w - 20
+        base_y = y0 + 48
+        line_h = 20
+        progress_y = y1 - 40  # progress bar baseline; keep near bottom
+        # 可用于两段文本的最大总行数
+        max_lines_total = max(2, (progress_y - base_y - 10) // line_h)
+
+        cur_text = f"当前 Lv.{cur_lv}：{cur_detail}"
+        next_text = f"下一级 Lv.{min(cur_lv + 1, max_lv)}：{next_detail}"
+        cur_lines = wrap_text(cur_text, regular_font, max_text_width, draw)
+        next_lines = wrap_text(next_text, regular_font, max_text_width, draw)
+
+        # 分配行数：尽量保证当前与下一级各至少两行（在空间允许时）
+        base_min_each = 2 if max_lines_total >= 4 else 1
+        cur_allow = max(base_min_each, min(len(cur_lines), max_lines_total - base_min_each))
+        next_allow = max(base_min_each, min(len(next_lines), max_lines_total - cur_allow))
+        if max_lines_total >= base_min_each * 2 and next_allow < base_min_each:
+            # 将多余行数从当前段让给下一段，确保下一段至少 base_min_each 行
+            need = base_min_each - next_allow
+            cur_allow = max(base_min_each, cur_allow - need)
+            next_allow = min(len(next_lines), max_lines_total - cur_allow)
+
+        # 画当前段
+        draw_y = base_y
+        for j, line in enumerate(cur_lines[:cur_allow]):
+            # 如果被截断，处理省略号
+            txt = line
+            if j == cur_allow - 1 and len(cur_lines) > cur_allow:
+                while draw.textlength(txt + '...', font=regular_font) > max_text_width and len(txt) > 0:
+                    txt = txt[:-1]
+                txt = txt + '...'
+            draw.text((x0 + 10, draw_y), txt, fill=(200, 220, 255), font=regular_font)
+            draw_y += line_h
+
+        # 画下一段
+        for j, line in enumerate(next_lines[:next_allow]):
+            txt = line
+            if j == next_allow - 1 and len(next_lines) > next_allow:
+                while draw.textlength(txt + '...', font=regular_font) > max_text_width and len(txt) > 0:
+                    txt = txt[:-1]
+                txt = txt + '...'
+            draw.text((x0 + 10, draw_y), txt, fill=(160, 200, 255), font=regular_font)
+            draw_y += line_h
+
+        # Progress bar
+        cur = status['current_need']
+        seg_total = max(1, status['next_total'] - status['current_total'])
+        bar_x, bar_y = x0 + 10, progress_y
+        bar_w, bar_h = card_w - 20, 14
+        pct = min(max(cur / seg_total, 0), 1)
+        draw.rectangle([(bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h)], fill=(54, 57, 70), outline=(98, 114, 164))
+        fill_w = int(bar_w * pct)
+        draw.rectangle([(bar_x, bar_y), (bar_x + fill_w, bar_y + bar_h)], fill=(80, 250, 123))
+        text = f"EXP {status['total_exp']} | +{cur}/{seg_total}"
+        draw.text((bar_x + bar_w - 4, bar_y + bar_h + 4), text, fill=(200, 200, 200), font=small_font, anchor="rt")
+
+    # Footer
+    draw.text((width/2, height - 15), "天赋系统", fill=(98, 114, 164), font=regular_font, anchor="mm")
     return image

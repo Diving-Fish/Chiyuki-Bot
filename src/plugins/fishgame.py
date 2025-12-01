@@ -1,3 +1,4 @@
+from copy import copy
 from nonebot import get_bot, on_command, on_regex, get_driver
 from nonebot.params import CommandArg, EventMessage
 from nonebot.adapters import Event
@@ -17,18 +18,23 @@ __plugin_meta = {
     "help_text": """以成为捕鱼达人为目标吧！
 群里会随机出现鱼，在出现的时候【捕鱼】即可！
 鱼3分钟就会离开，请尽快捕获！
+以下命令中，<>表示必要参数，[]表示可选参数
 可用命令列表：
 捕鱼 在鱼出现时进行捕鱼
 面板 查看自己的角色面板
 背包 [页数] 查看自己的背包列表
-使用 <道具编号> 使用道具
+使用 <道具编号> [其他参数] 使用道具
 单抽/十连/百连 使用金币进行抽奖（单抽10金币，十连100金币，百连1000金币）
+神秘单抽/神秘十连/神秘百连 使用金币进行神秘抽奖（100/1000/10000 金币）
 状态 查看池子状态
 商店 查看商店
 商店购买 <商品编号> 购买商品
 合成 查看合成工坊
-合成 <物品编号> 合成指定物品
-赠送 <QQ号> <物品编号> 赠送物品给其他玩家（24小时冷却，仅限部分物品）""",
+合成 <道具编号> [数量] 合成指定道具
+赠送 <QQ号> <道具编号> 赠送道具给其他玩家（24小时冷却，仅限部分道具）
+建筑 显示建筑面板
+大锅 显示大锅面板
+天赋 显示天赋面板""",
 }
 
 plugin_manager.register_plugin(__plugin_meta)
@@ -135,24 +141,113 @@ async def _(event: Event, message: Message = CommandArg()):
         })
     ]))
 
-catch = on_command('捕鱼', aliases={'捕捉', '捕获'}, rule=__group_checker)
+# 查看配件详细技能
+view_accessory = on_command('查看配件', rule=__group_checker)
+
+@view_accessory.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    args = str(message).strip().split()
+    if len(args) != 1:
+        await view_accessory.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("用法：查看配件 <配件编号>")
+        ]))
+        return
+    acc_id = args[0]
+    try:
+        acc_id_int = int(acc_id)
+    except ValueError:
+        await view_accessory.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("编号必须是数字")
+        ]))
+        return
+    player = FishPlayer(str(event.user_id))
+    item = FishItem.get(str(acc_id_int))
+    if not item or item.type != 'accessory':
+        await view_accessory.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("未找到该配件")
+        ]))
+        return
+    # 仅允许查看自己拥有的配件
+    if player.bag.get_item(acc_id_int) is None:
+        await view_accessory.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("你未持有该配件")
+        ]))
+        return
+    from src.libraries.fishgame.data import get_skill
+    lines = [f"配件 {item.name} (ID:{item.id})", f"描述: {item.description}"]
+    if getattr(item, 'skills', []):
+        lines.append("技能:")
+        for sk in item.skills:
+            sk_obj = get_skill(sk['id'])
+            if not sk_obj:
+                continue
+            lines.append(f" - {sk_obj.name} Lv{sk['level']} | {sk_obj.desc}")
+    else:
+        lines.append("无技能")
+    await view_accessory.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text('\n'.join(lines))
+    ]))
+
+# 查看当前玩家所有生效技能（配件 + 未来可能的 rod/tool）
+skill_list_cmd = on_command('技能列表', rule=__group_checker)
+
+@skill_list_cmd.handle()
+async def _(event: Event):
+    player = FishPlayer(str(event.user_id))
+    from src.libraries.fishgame.data import get_skill, FishItem
+    equipped_items = [player.equipment.rod, player.equipment.tool, player.equipment.accessory]
+    all_skills = {}
+    for eq in equipped_items:
+        if not eq:
+            continue
+        for sk in getattr(eq, 'skills', []):
+            sk_id = sk['id']
+            sk_level = sk['level']
+            if sk_id in all_skills:
+                all_skills[sk_id] = max(all_skills[sk_id], sk_level)
+            else:
+                all_skills[sk_id] = sk_level
+    if not all_skills:
+        await skill_list_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("当前没有任何生效技能")
+        ]))
+        return
+    lines = ["当前生效技能："]
+    for sk_id, lv in sorted(all_skills.items()):
+        sk_obj = get_skill(sk_id)
+        if not sk_obj:
+            continue
+        lines.append(f" - {sk_obj.name} Lv{lv} | {sk_obj.desc}")
+        lines.append(sk_obj.get_detail_for_level(lv))
+    await skill_list_cmd.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text('\n'.join(lines))
+    ]))
+
+catch = on_command('捕鱼', aliases={'大师球'}, rule=__group_checker)
 
 @catch.handle()
 async def _(event: Event, message: Message = EventMessage()):
-    if str(message) != '捕鱼':
+    if str(message) != '捕鱼' and str(message) != '大师球':
         return
     group = event.group_id
     if group not in fish_games:
         fish_games[group] = FishGame(group)
     game: FishGame = fish_games[group]
     player = FishPlayer(str(event.user_id))
-    res = game.catch_fish(player)
+    res = game.catch_fish(player, str(message) == '大师球')
     await catch.send(Message([
         MessageSegment.reply(event.message_id),
         MessageSegment.text(res['message'])
     ]))
 
-draw = on_command('单抽', aliases={'十连', '百连'}, rule=__group_checker)
+draw = on_command('单抽', aliases={'十连', '百连', '千连'}, rule=__group_checker)
 
 @draw.handle()
 async def _(event: Event, message: Message = EventMessage()):
@@ -160,12 +255,19 @@ async def _(event: Event, message: Message = EventMessage()):
     if msg == '单抽':
         ten_time = False
         hundred_time = False
+        thousand_time = False
     elif msg == '十连':
         ten_time = True
         hundred_time = False
+        thousand_time = False
     elif msg == '百连':
         ten_time = False
         hundred_time = True
+        thousand_time = False
+    elif msg == '千连':
+        ten_time = False
+        hundred_time = False
+        thousand_time = True
     else:
         return
     group = event.group_id
@@ -173,7 +275,7 @@ async def _(event: Event, message: Message = EventMessage()):
         fish_games[group] = FishGame(group) 
     game: FishGame = fish_games[group]
     player = FishPlayer(str(event.user_id))
-    res = game.gacha(player, ten_time, hundred_time)
+    res = game.gacha(player, ten_time, hundred_time, thousand_time)
     if res['code'] == 0:
         gacha_panel = create_gacha_panel(res['message'])
         await draw.send(Message([
@@ -184,6 +286,51 @@ async def _(event: Event, message: Message = EventMessage()):
         ]))
     else:
         await draw.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res['message'])
+        ]))
+
+# 神秘抽卡
+mystery_draw = on_command('神秘单抽', aliases={'神秘十连', '神秘百连', '神秘千连'}, rule=__group_checker)
+
+@mystery_draw.handle()
+async def _(event: Event, message: Message = EventMessage()):
+    msg = str(message).strip()
+    if msg == '神秘单抽':
+        ten_time = False
+        hundred_time = False
+        thousand_time = False
+    elif msg == '神秘十连':
+        ten_time = True
+        hundred_time = False
+        thousand_time = False
+    elif msg == '神秘百连':
+        ten_time = False
+        hundred_time = True
+        thousand_time = False
+    elif msg == '神秘千连':
+        ten_time = False
+        hundred_time = False
+        thousand_time = True
+    else:
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+    res = game.mystery_gacha(player, ten_time=ten_time, hundred_time=hundred_time, thousand_time=thousand_time)
+    if res['code'] == 0:
+        # 复用现有的 gacha 面板
+        gacha_panel = create_gacha_panel(res['message'])
+        await mystery_draw.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment("image", {
+                "file": f"base64://{str(image_to_base64(gacha_panel), encoding='utf-8')}"
+            })
+        ]))
+    else:
+        await mystery_draw.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment.text(res['message'])
         ]))
@@ -237,16 +384,35 @@ async def _(event: Event, message: Message = EventMessage()):
     try:
         args = str(message).strip().split('使用')
         force = args[0].strip() == '强制'
-        id = int(args[1].strip())
+        remain_args = args[1].strip().split(' ')
+        id = int(remain_args[0].strip())
+        remain_args = remain_args[1:]
+        count = 1
+        copied_remain_args = copy(remain_args)
         group = event.group_id
         if group not in fish_games:
             fish_games[group] = FishGame(group) 
         game: FishGame = fish_games[group]
         player = FishPlayer(str(event.user_id))
-        res = game.use_item(player, id, force)
+        msg = []
+        while count > 0:
+            res = game.use_item(player, id, force, copied_remain_args)
+            if len(copied_remain_args) == 1 and FishItem.get(id).batch_use:
+                count = int(copied_remain_args[0]) - 1
+                copied_remain_args = copy(remain_args)
+                copied_remain_args[-1] = str(count)
+            else:
+                count -= 1
+            msg.append(res['message'])
+            if res['code'] != 0:
+                break
+        if len(msg) > 10:
+            msg = f'...(省略了{len(msg)-10}条)' + '\n' + '\n'.join(msg[-10:])
+        else:
+            msg = '\n'.join(msg)
         await catch.send(Message([
             MessageSegment.reply(event.message_id),
-            MessageSegment.text(res['message'])
+            MessageSegment.text(msg)
         ]))
     except Exception as e:
         await catch.send(Message([
@@ -255,10 +421,10 @@ async def _(event: Event, message: Message = EventMessage()):
         ]))
         raise e
 
-status = on_command('状态', rule=__group_checker)
+status = on_command('状态', aliases={'池子状态', '完整状态'}, rule=__group_checker)
 
 @status.handle()
-async def _(event: Event):
+async def _(event: Event, msg: Message = EventMessage()):
     group = event.group_id
     if group not in fish_games:
         fish_games[group] = FishGame(group)
@@ -279,12 +445,29 @@ async def _(event: Event):
             s += f"剩余{buff['time']}次\n"
         elif buff.get('expire', None) is not None:
             s += f"剩余{int(buff['expire'] - time.time())}秒\n"
-    res = game.get_status()['message'] + '\n当前刷新鱼概率：\n'
+    res = game.get_status()['message']
     simulate = game.simulate_spawn_fish()
-    await status.send(Message([
-        MessageSegment.reply(event.message_id),
-        MessageSegment.text(s + res + simulate)
-    ]))
+    if str(msg) == '状态':
+        if s == "":
+            await status.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text("当前没有任何玩家状态，请尝试命令【池子状态】或【完整状态】")
+            ]))
+        else:
+            await status.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text(s)
+            ]))
+    elif str(msg) == "池子状态":
+        await status.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res)
+        ]))
+    elif str(msg) == "完整状态":
+        await status.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(s + res + '\n当前刷新鱼概率：\n' + simulate)
+        ]))
 
 refresh_counts = on_command('饿鱼')
 
@@ -352,7 +535,7 @@ async def _(event: Event, message: Message = CommandArg()):
     if str(event.user_id) not in get_driver().config.superusers:
         return
     args = str(message).strip().split(' ')
-    if len(args) != 2:
+    if len(args) != 2 and len(args) != 3:
         await force_item.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment.text("参数错误，格式：给道具 <QQ号> <物品编号>")
@@ -361,6 +544,10 @@ async def _(event: Event, message: Message = CommandArg()):
     try:
         qq = args[0]
         item_id = int(args[1])
+        try:
+            count = int(args[2])
+        except Exception:
+            count = 1
         player = FishPlayer(qq)
         item = FishItem.get(item_id)
         if item is None:
@@ -369,11 +556,13 @@ async def _(event: Event, message: Message = CommandArg()):
                 MessageSegment.text("未找到该物品")
             ]))
             return
-        player.bag.add_item(item_id, 1)
+        player.bag.add_item(item_id, count)
         player.save()
         await force_item.send(Message([
             MessageSegment.reply(event.message_id),
-            MessageSegment.text(f"已给予{qq} {item.name} x1")
+            MessageSegment.text(f"已给予"),
+            MessageSegment.at(qq),
+            MessageSegment.text(f" {item.name} x{count}")
         ]))
     except Exception as e:
         await force_item.send(Message([
@@ -382,6 +571,65 @@ async def _(event: Event, message: Message = CommandArg()):
         ]))
         raise e
     return
+
+force_gold = on_command('给金币', aliases={'给钱'})
+@force_gold.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if str(event.user_id) not in get_driver().config.superusers:
+        return
+    args = str(message).strip().split(' ')
+    if len(args) != 2:
+        await force_gold.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("参数错误，格式：给金币 <QQ号> <数量>")
+        ]))
+        return
+    try:
+        qq = args[0]
+        amount = int(args[1])
+        player = FishPlayer(qq)
+        player.data['gold'] += amount
+        player.save()
+        await force_gold.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(f"已给予"),
+            MessageSegment.at(qq),
+            MessageSegment.text(f" {amount}金币")
+        ]))
+    except Exception as e:
+        await force_gold.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("参数错误，格式：给金币 <QQ号> <数量>")
+        ]))
+
+force_building = on_command('设置建筑等级', rule=__group_checker)
+@force_building.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if str(event.user_id) not in get_driver().config.superusers:
+        return
+    args = str(message).strip().split(' ')
+    if len(args) != 2:
+        await force_building.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("参数错误，格式：设置建筑等级 <建筑名> <等级>")
+        ]))
+        return
+    
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+
+    building_name = args[0]
+    level = int(args[1])
+    building: BuildingBase = game.__getattribute__(building_name_map[building_name])
+    building.level = level
+    game.save()
+    await force_building.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text(f"已将 {building_name} 的等级设置为 {level}")
+    ]))
+
 
 craft = on_command('合成', rule=__group_checker)
 
@@ -405,7 +653,7 @@ async def _(event: Event, message: Message = CommandArg()):
             ]))
             return
         
-        craft_panel = create_craft_panel(craftable_items, player.bag, player.score)
+        craft_panel = create_craft_panel(craftable_items, player.bag, player)
         await craft.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment("image", {
@@ -415,12 +663,32 @@ async def _(event: Event, message: Message = CommandArg()):
     else:
         # 尝试合成指定物品
         try:
-            item_id = int(args)
-            res = game.craft_item(player, item_id)
-            await craft.send(Message([
-                MessageSegment.reply(event.message_id),
-                MessageSegment.text(res['message'])
-            ]))
+            args = args.split(' ')
+            item_id = int(args[0].strip())
+            count = int(args[1].strip()) if len(args) > 1 else 1
+            if count > 1 and FishItem.get(item_id).batch_craft:
+                msg = []
+                for _ in range(count):
+                    res = game.craft_item(player, item_id)
+                    if res['code'] == 0:
+                        msg.append(res['message'])
+                    else:
+                        msg.append(res['message'])
+                        break
+                if len(msg) > 10:
+                    msg = f'...(省略了{len(msg)-10}条)' + '\n' + '\n'.join(msg[-10:])
+                else:
+                    msg = '\n'.join(msg)
+                await craft.send(Message([
+                    MessageSegment.reply(event.message_id),
+                    MessageSegment.text(msg.strip())
+                ]))
+            else:
+                res = game.craft_item(player, item_id)
+                await craft.send(Message([
+                    MessageSegment.reply(event.message_id),
+                    MessageSegment.text(res['message'])
+                ]))
         except ValueError:
             await craft.send(Message([
                 MessageSegment.reply(event.message_id),
@@ -470,10 +738,17 @@ async def _(event: Event, message: Message = CommandArg()):
             return
         
         res = game.gift_item(player, receiver_qq, item_id)
-        await gift.send(Message([
-            MessageSegment.reply(event.message_id),
-            MessageSegment.text(res['message'])
-        ]))
+        if res.get('receiver') is not None:
+            await gift.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text(res['message']),
+                MessageSegment.at(res['receiver'])
+            ]))
+        else:
+            await gift.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text(res['message'])
+            ]))
         
     except Exception as e:
         await gift.send(Message([
@@ -481,3 +756,127 @@ async def _(event: Event, message: Message = CommandArg()):
             MessageSegment.text("参数格式错误，使用格式：赠送 <QQ号> <物品编号>")
         ]))
         raise e
+
+
+buildings = on_command('建筑', rule=__group_checker)
+
+@buildings.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if not hasattr(event, 'group_id'):
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+    
+    # 如果没有额外参数，显示建筑面板
+    if not str(message).strip():
+        buildings_panel = create_buildings_panel(game)
+        await buildings.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment("image", {
+                "file": f"base64://{str(image_to_base64(buildings_panel), encoding='utf-8')}"
+            })
+        ]))
+        return
+    
+    args = str(message).strip().split(' ')
+    if len(args) != 2:
+        await buildings.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("参数格式错误，使用格式：建筑 <建筑名称> <材料编号>")
+        ]))
+    
+    building_name = args[0]
+    if args[1] == '升级':
+        ret = game.building_level_up(building_name)
+        await buildings.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(ret['message'])
+        ]))
+        return
+    try:
+        item_id = int(args[1])
+    except ValueError:
+        await buildings.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("参数格式错误，使用格式：建筑 <建筑名称> <材料编号>")
+        ]))
+        return
+
+    ret = game.build(player, building_name, item_id)
+    await buildings.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text(ret['message'])
+    ]))
+
+pot = on_command('大锅', rule=__group_checker)
+
+@pot.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if not hasattr(event, 'group_id'):
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+
+    if game.big_pot.level == 0:
+        await pot.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(f'还没有建造大锅哦……')
+        ]))
+        return
+
+    args = str(message).strip().split(' ')
+    if args[0] == '添加':
+        item = FishItem.get(args[1])
+        if item is None:
+            await pot.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text(f'未找到物品 { args[1] }')
+            ]))
+            return
+        count = 1
+        if len(args) == 3:
+            try:
+                count = int(args[2])
+            except ValueError:
+                pass
+        ret = game.pot_add_item(player, item, count)
+        await pot.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(ret['message'])
+        ]))
+    else:
+        ret = game.get_pot_status()
+        await pot.send(Message([
+            MessageSegment.text(ret),
+            MessageSegment.text('\nUsage：大锅 添加 <物品ID> [数量]')
+        ]))
+
+# 天赋面板
+talent_cmd = on_command('天赋', rule=__group_checker)
+
+@talent_cmd.handle()
+async def _(event: Event, message: Message = EventMessage()):
+    # 仅群聊或频道环境启用（与其他命令一致）
+    if not hasattr(event, 'group_id'):
+        return
+    if str(message) != '天赋':
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+
+    panel_img = create_talent_panel(player, game)
+    await talent_cmd.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment("image", {
+            "file": f"base64://{str(image_to_base64(panel_img), encoding='utf-8')}"
+        })
+    ]))

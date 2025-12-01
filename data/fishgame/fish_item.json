@@ -56,6 +56,158 @@
         "description": "使用后，在 20 分钟内捕鱼时，获得的渔获提升 100%，效果不与其他加成卡叠加"
     },
     {
+        "id": 10,
+        "name": "荧光棒",
+        "rarity": 1,
+        "description": "使用后，在 30 分钟内，池子的平均渔力视为提升 15 点，不可与其他普通荧光棒效果叠加"
+    },
+    {
+        "id": 11,
+        "name": "白银荧光棒",
+        "rarity": 2,
+        "description": "使用后，在 30 分钟内，池子的平均渔力视为提升 30 点，不可与其他普通荧光棒效果叠加"
+    },
+    {
+        "id": 12,
+        "name": "黄金荧光棒",
+        "rarity": 3,
+        "description": "使用后，在 30 分钟内，池子的平均渔力视为提升 60 点，不可与其他普通荧光棒效果叠加"
+    },
+    {
+        "id": 13,
+        "name": "大师球碎片",
+        "rarity": 2,
+        "description": "可以用来合成大师球"
+    },
+    {
+        "id": 14,
+        "name": "大师球",
+        "rarity": 4,
+        "description": "使用【大师球】命令代替捕鱼，必定会捕捉到当前的鱼",
+        "craftby": [13, 13, 13, 13, 13, 13, 13, 13, 13, 13],
+        "craft_score_cost": 1000
+    },
+    {
+        "id": 15,
+        "name": "星星沙子",
+        "rarity": 2,
+        "description": "炼金术常用的材料"
+    },
+    {
+        "id": 16,
+        "name": "古代金币",
+        "rarity": 3,
+        "description": "炼金术的稀有材料"
+    },
+    {
+        "id": 17,
+        "name": "彗星碎片",
+        "rarity": 4,
+        "description": "炼金术中极其少见的材料"
+    },
+    {
+        "id": 18,
+        "name": "传说石板",
+        "rarity": 5,
+        "description": "传说中的炼金术材料，极其珍贵"
+    },
+    {
+        "id": 19,
+        "name": "黯淡的玉",
+        "rarity": 2,
+        "description": "没什么光泽的玉，可以消耗星星沙子升级成明亮的玉"
+    },
+    {
+        "id": 20,
+        "name": "明亮的玉",
+        "rarity": 3,
+        "description": "晶莹透亮的玉，或许可以用来合成戒指",
+        "craftby": [19, 19, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+        "craft_shop_level": 1,
+        "craft_score_cost": 500  
+    },
+    {
+        "id": 21,
+        "name": "神秘之玉",
+        "rarity": 4,
+        "description": "带有萧瑟气息的玉，或许可以用来镶嵌到手镯中心",
+        "craftby": [20, 20, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16],
+        "craft_shop_level": 1,
+        "craft_score_cost": 2000
+    },
+    {
+        "id": 22,
+        "name": "星空宝石",
+        "rarity": 5,
+        "description": "极其闪亮的宝石，可以用来具有强大护佑的项链",
+        "craftby": [21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+        "craft_shop_level": 2,
+        "craft_score_cost": 5000
+    },
+    {
+        "id": 23,
+        "name": "钻石渔力强化剂",
+        "rarity": 4,
+        "description": "使用后，下 6 次捕鱼时渔力提升 60 点，效果不与其他强化剂叠加"
+    },
+    {
+        "id": 24,
+        "name": "钻石渔获加成卡",
+        "rarity": 4,
+        "description": "使用后，在 20 分钟内捕鱼时，获得的渔获提升 150%，效果不与其他加成卡叠加"
+    },
+    {
+        "id": 25,
+        "name": "破旧的天赋书",
+        "rarity": 2,
+        "description": "提升指定天赋 10 点经验值。",
+        "batch_craft": true,
+        "batch_use": true
+    },
+    {
+        "id": 26,
+        "name": "天赋书",
+        "rarity": 3,
+        "description": "提升指定天赋 100 点经验值。",
+        "craftby": [25, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+        "craft_shop_level": 1,
+        "craft_score_cost": 2000,
+        "batch_craft": true,
+        "batch_use": true
+    },
+    {
+        "id": 27,
+        "name": "高级天赋书",
+        "rarity": 3,
+        "description": "提升指定天赋 400 点经验值。",
+        "craftby": [304, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16],
+        "craft_shop_level": 2,
+        "craft_score_cost": 8000,
+        "batch_craft": true,
+        "batch_use": true
+    },
+    {
+        "id": 28,
+        "name": "闪耀天赋书",
+        "rarity": 4,
+        "description": "提升指定天赋 1000 点经验值。",
+        "craftby": [304, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+        "craft_shop_level": 2,
+        "craft_score_cost": 20000,
+        "batch_craft": true,
+        "batch_use": true
+    },
+    {
+        "id": 29,
+        "name": "传说天赋宝典",
+        "rarity": 5,
+        "description": "能够提升指定天赋最多 2000 点经验值，但是提升的每点经验值需要支付 10 金币",
+        "craftby": [304, 18, 18],
+        "craft_shop_level": 3,
+        "craft_score_cost": 20000,
+        "batch_craft": true
+    },
+    {
         "id": 101,
         "name": "机械抓手",
         "rarity": 1,
@@ -160,6 +312,14 @@
         "rarity": 4,
         "description": "金色的美丽王冠。比银色王冠珍贵。",
         "price": 68800
+    },
+    {
+        "id": 208,
+        "name": "溶解液",
+        "rarity": 3,
+        "price": 5000,
+        "craft_shop_level": 2,
+        "description": "将成品配件溶解成宝玉。如果一天之内使用太多，可能有不好的事情发生。"
     },
     {
         "id": 301,
@@ -499,10 +659,24 @@
     },
     {
         "id": 349,
-        "name": "超梦的基因",
+        "name": "神秘宝玉",
         "rarity": 4,
-        "description": "超梦完美的基因片段，包含着无尽的可能性。",
+        "description": "内含完美的基因片段，包含着无尽的可能性。",
         "price": 1900
+    },
+    {
+        "id": 298,
+        "name": "一箱金币",
+        "rarity": 4,
+        "description": "使用后可获得 5000 金币。无法赠送！",
+        "price": 5000
+    },
+    {
+        "id": 299,
+        "name": "一袋金币",
+        "rarity": 3,
+        "description": "使用后可获得 1000 金币",
+        "price": 1000
     },
     {
         "id": 401,
@@ -578,5 +752,67 @@
             306, 305, 305, 205
         ],
         "craft_score_cost": 2000
+    },
+    {
+        "id": 407,
+        "name": "海皇荧光棒",
+        "rarity": 4,
+        "description": "使用后，在 60 分钟内，池子的平均渔力视为提升 100 点，可以与普通荧光棒叠加",
+        "craftby": [
+            313, 308
+        ],
+        "craft_score_cost": 1000
+    },
+    {
+        "id": 408,
+        "name": "神秘之涎",
+        "rarity": 4,
+        "description": "使用后，立即使当前群进入鱼群状态",
+        "craftby": [
+            302, 302, 302, 304, 304, 304, 306, 306, 308, 308, 310, 310, 312, 314
+        ],
+        "craft_score_cost": 10000
+    },
+    {
+        "id": 1001,
+        "name": "星之戒指",
+        "rarity": 3,
+        "description": "具有群星护佑的戒指，附带一些技能效果",
+        "stackable": false,
+        "id_range": 1100,
+        "equipable": true,
+        "type": "accessory",
+        "skill_point": 6,
+        "craftby": [20, 206],
+        "craft_shop_level": 1,
+        "craft_score_cost": 2000
+    },
+    {
+        "id": 1101,
+        "name": "神秘手镯",
+        "rarity": 4,
+        "description": "充满神秘气息的手镯，附带大量技能效果",
+        "stackable": false,
+        "id_range": 1200,
+        "equipable": true,
+        "type": "accessory",
+        "skill_point": 10,
+        "craftby": [21, 206],
+        "craft_shop_level": 1,
+        "craft_score_cost": 5000
+    },
+    {
+        "id": 1201,
+        "name": "璀璨项链",
+        "rarity": 5,
+        "description": "璀璨斑斓的项链，附带极大量技能效果",
+        "stackable": false,
+        "id_range": 1300,
+        "equipable": true,
+        "type": "accessory",
+        "skill_point": 15,
+        "craftby": [22, 207],
+        "craft_shop_level": 2,
+        "craft_score_cost": 20000
     }
 ]

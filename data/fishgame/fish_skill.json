@@ -1,0 +1,177 @@
+[
+    {
+        "id": 1,
+        "name": "渔力",
+        "desc": "增加捕鱼时的渔力值",
+        "effect": {
+            "power": [5, 10, 15, 20, 30, 40, 50]
+        },
+        "score": 3,
+        "detail": "增加捕鱼时的渔力值 {power}",
+        "max_level": 7
+    },
+    {
+        "id": 2,
+        "name": "沙漠亲和力",
+        "desc": "在沙漠主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_沙漠": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在沙漠主题中捕鱼时，渔力增加 {power_沙漠}",
+        "max_level": 3
+    },
+    {
+        "id": 3,
+        "name": "森林亲和力",
+        "desc": "在森林主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_森林": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在森林主题中捕鱼时，渔力增加 {power_森林}",
+        "max_level": 3
+    },
+    {
+        "id": 4,
+        "name": "火山亲和力",
+        "desc": "在火山主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_火山": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在火山主题中捕鱼时，渔力增加 {power_火山}",
+        "max_level": 3
+    },
+    {
+        "id": 5,
+        "name": "天空亲和力",
+        "desc": "在天空主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_天空": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在天空主题中捕鱼时，渔力增加 {power_天空}",
+        "max_level": 3
+    },
+    {
+        "id": 6,
+        "name": "雪山亲和力",
+        "desc": "在雪山主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_雪山": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在雪山主题中捕鱼时，渔力增加 {power_雪山}",
+        "max_level": 3
+    },
+    {
+        "id": 7,
+        "name": "金属亲和力",
+        "desc": "在金属主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_金属": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在金属主题中捕鱼时，渔力增加 {power_金属}",
+        "max_level": 3
+    },
+    {
+        "id": 8,
+        "name": "神秘亲和力",
+        "desc": "在神秘主题中捕鱼时，渔力增加",
+        "effect": {
+            "power_神秘": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "在神秘主题中捕鱼时，渔力增加 {power_神秘}",
+        "max_level": 3
+    },
+    {
+        "id": 9,
+        "name": "失败主义",
+        "desc": "捕鱼失败时，仍可获得少量渔获",
+        "effect": {
+            "fail_reward": [10, 20, 30],
+            "item_percent": [15, 30, 50]
+        },
+        "score": 2,
+        "detail": "捕鱼失败时，依然可以获得 {fail_reward}% 渔获，且有 {item_percent}% 概率获得道具",
+        "max_level": 3
+    },
+    {
+        "id": 10,
+        "name": "看破",
+        "desc": "捕鱼时有概率获得额外渔获",
+        "effect": {
+            "crit_percent": [5, 10, 15, 20, 30]
+        },
+        "score": 3,
+        "detail": "捕鱼时有 {crit_percent}% 概率获得额外渔获",
+        "max_level": 5
+    },
+    {
+        "id": 11,
+        "name": "超幸运",
+        "desc": "触发看破时，获得的渔获量提高",
+        "effect": {
+            "crit_rate": [160, 170, 180, 200]
+        },
+        "score": 4,
+        "detail": "触发看破时，获得的渔获量为 {crit_rate}%",
+        "max_level": 4
+    },
+    {
+        "id": 12,
+        "name": "不屈",
+        "desc": "捕鱼失败时，可以再次尝试",
+        "effect": {
+            "cool_down": [20, 15, 10]
+        },
+        "score": 3,
+        "detail": "捕鱼失败时，可以再次尝试，冷却时间 {cool_down} 分钟",
+        "max_level": 3
+    },
+    {
+        "id": 13,
+        "name": "巧舌",
+        "desc": "提升成功捕鱼时获得的金币量",
+        "effect": {
+            "gold_rate": [5, 10, 15, 20, 25, 30, 40]
+        },
+        "score": 3,
+        "detail": "成功捕鱼时，获得的金币量提升 {gold_rate}%",
+        "max_level": 7
+    },
+    {
+        "id": 14,
+        "name": "熟能生巧",
+        "desc": "提升捕鱼时获得的经验",
+        "effect": {
+            "exp_rate": [5, 10, 15, 20, 25, 30, 40]
+        },
+        "score": 3,
+        "detail": "捕鱼时，获得的经验提升 {exp_rate}%",
+        "max_level": 7
+    },
+    {
+        "id": 15,
+        "name": "传奇捕鱼者",
+        "desc": "根据捕捉的鱼是否已经记录在图鉴中，获得额外效果",
+        "effect": {
+            "new_fish_power": [20, 40, 60],
+            "old_fish_crit": [5, 10, 15]
+        },
+        "score": 6,
+        "detail": "捕捉未记录在图鉴中的鱼时，渔力提升 {new_fish_power}；捕捉已记录在图鉴中的鱼时，有 {old_fish_crit}% 概率获得额外渔获",
+        "max_level": 3
+    },
+    {
+        "id": 16,
+        "name": "已升级",
+        "desc": "没有效果，只是意味着这个饰品无法再次升级了。",
+        "score": 0,
+        "detail": "没有效果，只是意味着这个饰品无法再次升级了。",
+        "max_level": 1
+    }
+]

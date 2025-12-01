@@ -91,6 +91,7 @@ status_vals = status.values()
 weather_vals = weathers.values()
 terrain_vals = terrains.values()
 
+types_cn_simple = ['普', '火', '水', '电', '草', '冰', '斗', '毒', '地', '飞', '超', '虫', '岩', '鬼', '龙', '恶', '钢', '妖', '星']
 types_cn = ['一般', '火', '水', '电', '草', '冰', '格斗', '毒', '地面', '飞行', '超能', '虫', '岩石', '幽灵', '龙', '恶', '钢', '妖精', '星晶']
 types = ['Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy', 'Stellar']
 

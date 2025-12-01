@@ -13,6 +13,7 @@ from src.libraries.showdown_data_fetch import get_tier_score, parse_pokemon_show
 from src.libraries.poke_dmg_calc import DamageCalc, types_cn, types, species_en2zh, abilities_en2zh
 from src.data_access.plugin_manager import plugin_manager
 from src.data_access.redis import redis_global
+from private.libraries.poke_match.match10v1 import try_update_tricolor
 import os
 import requests
 
@@ -201,11 +202,14 @@ async def _(event: Event, message: Message = CommandArg()):
     redis_global.setex(f'query_showdown_{gid}_{user_id}', 60, 1)
     
 
-tricolor = on_command("抽三色")
+# tricolor = on_command("抽三色")
 
-@tricolor.handle()
-async def _(event: Event, message: Message = CommandArg()):
-    await tricolor.send(Message([
-        MessageSegment.reply(event.message_id),
-        MessageSegment.text('，'.join(random.sample(types_cn[:-1], 3)))
-    ]))
+# @tricolor.handle()
+# async def _(event: Event, message: Message = CommandArg()):
+#     result = random.sample(types_cn[:-1], 3)
+#     result_en = [types[types_cn.index(t)] for t in result]
+#     try_update_tricolor(str(event.user_id), result_en)
+#     await tricolor.send(Message([
+#         MessageSegment.reply(event.message_id),
+#         MessageSegment.text('，'.join(result))
+#     ]))

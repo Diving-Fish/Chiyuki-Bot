@@ -1,0 +1,98 @@
+[
+    {
+        "id": 1,
+        "name": "属性会心（火）",
+        "desc": "如果目标鱼有火属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_fire": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有火属性弱点，则会心概率提升 {crit_percent_fire}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 2,
+        "name": "属性会心（水）",
+        "desc": "如果目标鱼有水属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_water": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有水属性弱点，则会心概率提升 {crit_percent_water}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 3,
+        "name": "属性会心（草）",
+        "desc": "如果目标鱼有草属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_grass": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有草属性弱点，则会心概率提升 {crit_percent_grass}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 4,
+        "name": "属性会心（冰）",
+        "desc": "如果目标鱼有冰属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_ice": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有冰属性弱点，则会心概率提升 {crit_percent_ice}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 5,
+        "name": "属性会心（电）",
+        "desc": "如果目标鱼有电属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_electric": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有电属性弱点，则会心概率提升 {crit_percent_electric}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 6,
+        "name": "属性会心（幽灵）",
+        "desc": "如果目标鱼有幽灵属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_ghost": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有幽灵属性弱点，则会心概率提升 {crit_percent_ghost}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 7,
+        "name": "属性会心（地面）",
+        "desc": "如果目标鱼有地面属性弱点，则会心概率提升。",
+        "effect": {
+            "crit_percent_ground": [5, 10, 15, 20, 25]
+        },
+        "detail": "如果目标鱼有地面属性弱点，则会心概率提升 {crit_percent_ground}%",
+        "base_cost": 1000,
+        "power_cost": 2,
+        "statue_require": 1
+    },
+    {
+        "id": 8,
+        "name": "渔力会心",
+        "desc": "你每点大于目标鱼难度的渔力提供会心率。",
+        "effect": {
+            "crit_percent": [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+        },
+        "detail": "每高于目标难度 1 点渔力，会心概率提升 {crit_percent}%",
+        "base_cost": 500,
+        "power_cost": 1.6,
+        "statue_require": 1
+    }
+]

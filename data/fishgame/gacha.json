@@ -66,6 +66,26 @@
     },
     {
         "type": "item",
+        "value": 10,
+        "weight": 5
+    },
+    {
+        "type": "item",
+        "value": 11,
+        "weight": 2
+    },
+    {
+        "type": "item",
+        "value": 12,
+        "weight": 1
+    },
+    {
+        "type": "item",
+        "value": 13,
+        "weight": 5
+    },
+    {
+        "type": "item",
         "value": 101,
         "weight": 4
     },
