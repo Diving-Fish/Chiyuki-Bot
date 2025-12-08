@@ -1722,6 +1722,12 @@ class FishGame(DictRedisData):
             }
 
     def pot_add_item(self, player: FishPlayer, item: FishItem, count: int):
+        if count <= 0:
+            return {
+                "code": "-1",
+                "message": "添加数量必须大于0"
+            }
+
         pot = self.big_pot
         remain_capacity = pot.capacity - pot.current
         item_volume = [1, 2, 5, 10][item.rarity - 1]
