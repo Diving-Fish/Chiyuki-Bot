@@ -27,6 +27,9 @@ _steel_r3_drop = ItemRequest(['340', '341', '342', '343'], '金属SSR通常掉�
 _steel_r4_drop = ItemRequest(['344'], '金属SSR稀有掉落物')
 _mystic_r3_drop = ItemRequest(['345', '346', '347', '348'], '神秘SSR通常掉落物')
 _mystic_r4_drop = ItemRequest(['349'], '神秘SSR稀有掉落物')
+_sea_token = ItemRequest(['30'], '海洋之证')
+_hurricane_token = ItemRequest(['31'], '风暴之证')
+_strongest_token = ItemRequest(['32'], '最强之证')
 
 building_name_map = {
     '大锅': 'big_pot',
@@ -36,7 +39,8 @@ building_name_map = {
     '冰洞': 'ice_hole',
     '神秘商店': 'mystic_shop',
     '七天神像': 'seven_statue',
-    '熔炉工坊': 'forge_shop'
+    '熔炉工坊': 'forge_shop',
+    '港口': 'port'
 }
 
 class BuildingBase:
@@ -644,6 +648,67 @@ class ForgeShop(BuildingBase):
             1: {'big_pot': 3, 'mystic_shop': 2},
             2: {'big_pot': 4, 'mystic_shop': 3},
             3: {'big_pot': 5, 'mystic_shop': 4},
+        }
+        return pre.get(level, {})
+
+    @property
+    def max_level(self) -> int:
+        return 3
+
+
+# Final - L3
+class Port(BuildingBase):
+    def __init__(self, data):
+        super().__init__(data, 'port')
+        self.name = '港口'
+
+    @property
+    def description(self):
+        return "港口，可以用于出海捕鱼。"
+
+    def level_effect_desc(self, level):
+        return f"敌怪：第{level}阶段\n每日出海次数：{level}次 / 队伍最大人数：{level + 1}人"
+    
+    def get_level_materials(self, level: int) -> list[ItemRequest]:
+        materials = {
+            1: [
+                ItemRequest.with_count(_kyogre_drop, 2),
+                ItemRequest.with_count(_sand_r4_drop, 1),
+                ItemRequest.with_count(_forest_r4_drop, 1),
+                ItemRequest.with_count(_volcano_r4_drop, 1),
+                ItemRequest.with_count(_sky_r4_drop, 1),
+                ItemRequest.with_count(_ice_r4_drop, 1),
+                ItemRequest.with_count(_steel_r4_drop, 1),
+                ItemRequest.with_count(_mystic_r4_drop, 1),
+            ],
+            2: [
+                ItemRequest.with_count(_sea_token, 10),
+                ItemRequest.with_count(_sand_r4_drop, 2),
+                ItemRequest.with_count(_forest_r4_drop, 2),
+                ItemRequest.with_count(_volcano_r4_drop, 2),
+                ItemRequest.with_count(_sky_r4_drop, 2),
+                ItemRequest.with_count(_ice_r4_drop, 2),
+                ItemRequest.with_count(_steel_r4_drop, 2),
+                ItemRequest.with_count(_mystic_r4_drop, 2),
+            ],
+            3: [
+                ItemRequest.with_count(_hurricane_token, 20),
+                ItemRequest.with_count(_sand_r4_drop, 5),
+                ItemRequest.with_count(_forest_r4_drop, 5),
+                ItemRequest.with_count(_volcano_r4_drop, 5),
+                ItemRequest.with_count(_sky_r4_drop, 5),
+                ItemRequest.with_count(_ice_r4_drop, 5),
+                ItemRequest.with_count(_steel_r4_drop, 5),
+                ItemRequest.with_count(_mystic_r4_drop, 5),
+            ],
+        }
+        return materials.get(level, {})
+    
+    def get_level_prerequisites(self, level):
+        pre = {
+            1: {'big_pot': 3, 'forge_shop': 1},
+            2: {'big_pot': 4, 'forge_shop': 2},
+            3: {'big_pot': 5, 'forge_shop': 3},
         }
         return pre.get(level, {})
 

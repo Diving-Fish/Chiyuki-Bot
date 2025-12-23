@@ -117,7 +117,7 @@ async def get_qq_avatar(qq_number: int, size: int = 160) -> Image.Image:
 
 def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: FishGame=None):
     # 创建一个800x800的图像 (增加高度以容纳图鉴)
-    width, height = 800, 860
+    width, height = 800, 940
     image = Image.new("RGB", (width, height), (40, 42, 54))  # 深色背景
     draw = ImageDraw.Draw(image)
     
@@ -169,14 +169,14 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: Fi
     draw.text((width-60, 125), f"积分: {player.score}", fill=(241, 250, 140), font=header_font, anchor="rt")
     
     # 装备区域
-    draw.rectangle([(50, 170), (width-50, 360)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
+    draw.rectangle([(50, 170), (width-50, 420)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
     draw.text((60, 180), "当前装备", fill=(189, 147, 249), font=header_font)
     
     # 定义装备栏位置
     equipment_slots = [
         {"name": "渔具", "x": 70, "y": 210, "item": player.equipment.rod},
-        {"name": "工具", "x": 70, "y": 250, "item": player.equipment.tool},
-        {"name": "配件", "x": 70, "y": 290, "item": player.equipment.accessory}
+        {"name": "工具", "x": 70, "y": 280, "item": player.equipment.tool},
+        {"name": "配件", "x": 70, "y": 350, "item": player.equipment.accessory}
     ]
     
     # 绘制装备栏
@@ -199,9 +199,9 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: Fi
             if wrapped_desc:
                 draw.text((slot["x"]+60, slot["y"]+line_offset), wrapped_desc[0], fill=(248, 248, 242), font=small_font)
                 line_offset += 18
-            # 如果是配件，显示技能
+            # 显示技能
             xoffset = 0
-            if slot['name'] == '配件' and getattr(item, 'skills', []):
+            if getattr(item, 'skills', []):
                 for sk in item.skills:
                     sk_obj = get_skill(sk['id'])
                     if sk_obj:
@@ -211,7 +211,7 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: Fi
             draw.text((slot["x"]+60, slot["y"]), "未装备", fill=(98, 114, 164), font=regular_font)
     
     # 若新增配件栏导致高度不足，向下平移图鉴起点
-    pokedex_top = 370
+    pokedex_top = 430
     draw.rectangle([(50, pokedex_top), (width-50, height-50)], fill=(68, 71, 90), outline=(98, 114, 164), width=2)
     draw.text((60, pokedex_top + 10), "图鉴", fill=(189, 147, 249), font=header_font)
     
@@ -220,7 +220,7 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: Fi
         'header': header_font,
         'regular': regular_font,
         'small': small_font
-    })
+    }, y=pokedex_top)
     
     # 底部提示信息
     # draw.line([(50, height-50), (width-50, height-50)], fill=(98, 114, 164), width=2)
@@ -230,7 +230,7 @@ def create_character_panel(player: FishPlayer, avatar_img: Image.Image, game: Fi
     return image
 
 
-def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
+def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, y):
     """创建图鉴内容"""
     from src.libraries.fishgame.data import fish_data, weekday_topic
     import time
@@ -246,7 +246,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
     total_fish_count = base_fish_count + group_fish_count
     
     # 统计已捕获的鱼
-    caught_fish_ids = set(player.fish_log._FishLog__data)
+    caught_fish_ids = player.fish_log.caught_set
     
     # 基础鱼 (ID 1-32)
     base_fish_caught = len([fish_id for fish_id in caught_fish_ids if 1 <= fish_id <= base_fish_count])
@@ -258,9 +258,9 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
     
     # 显示完成率
     completion_rate = (total_caught / total_fish_count) * 100
-    draw.text((60, 350 + 60), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)", 
+    draw.text((60, y + 40), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)", 
              fill=(241, 250, 140), font=regular_font)
-    draw.text((60, 375 + 60), f"基础鱼: {base_fish_caught}/{base_fish_count}  鱼群鱼: {group_fish_caught}/{group_fish_count}", 
+    draw.text((60, y + 65), f"基础鱼: {base_fish_caught}/{base_fish_count}  鱼群鱼: {group_fish_caught}/{group_fish_count}", 
              fill=(248, 248, 242), font=small_font)
     
     # 获取今日鱼群主题
@@ -268,7 +268,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict):
     today_topic = weekday_topic[current_weekday] if current_weekday < len(weekday_topic) else ""
     
     # 绘制基础鱼图鉴 (4列显示)
-    y_start = 410 + 60
+    y_start = y + 90
     draw.text((60, y_start), "基础鱼:", fill=(189, 147, 249), font=header_font)
     
     # 显示基础鱼 (每排4个)
@@ -474,19 +474,23 @@ def create_inventory_panel(items_data, page, max_page, equipped_item_ids, player
     
     return image
 
-def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, player: FishPlayer = None):
+def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, player: FishPlayer = None, page: int = 1, total_pages: int = 1):
     """创建合成面板"""
     # 基本设置
     padding = 20
     item_width = 300
-    item_height = 320
-    items_per_row = 5
+    item_height = 360
+    items_per_row = 4
     
     # 计算面板尺寸
     items_count = len(craftable_items)
-    rows = math.ceil(items_count / items_per_row)
-    width = padding + (item_width + padding) * min(items_count, items_per_row)
-    height = 100 + (item_height + padding) * rows + 80
+    # rows = math.ceil(items_count / items_per_row)
+    # 固定显示 3 行的高度，或者根据实际行数（如果不足一页）
+    # 但为了美观，通常固定宽度
+    width = padding + (item_width + padding) * items_per_row
+    # height = 100 + (item_height + padding) * rows + 80
+    # 固定高度以容纳 3 行
+    height = 100 + (item_height + padding) * 3 + 80
     
     # 创建图像和绘图对象
     image = Image.new('RGB', (width, height), color=(40, 42, 54))
@@ -500,7 +504,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
     tiny_font = ImageFont.truetype("src/static/poke/LXGWWenKai-Regular.ttf", 12)
     
     # 绘制标题
-    draw.text((width/2, 40), "合成工坊", fill=(248, 248, 242), font=title_font, anchor="mm")
+    draw.text((width/2, 40), f"合成工坊 (第 {page}/{total_pages} 页)", fill=(248, 248, 242), font=title_font, anchor="mm")
     draw.line([(padding, 80), (width-padding, 80)], fill=(98, 114, 164), width=2)
     
     # 绘制合成物品
@@ -538,6 +542,35 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
             equip_text = f"类型: {type_text} | 渔力: +{power}"
             draw.text((x + 80, current_text_y), equip_text, fill=(80, 250, 123), font=small_font)
             current_text_y += 20
+            
+            # 显示技能
+            if getattr(item, 'skills', []):
+                skill_prefix = "技能: "
+                current_line_text = skill_prefix
+                max_skill_width = item_width - 90
+                
+                for sk in item.skills:
+                    sk_obj = get_skill(sk['id'])
+                    if sk_obj:
+                        skill_part = f"{sk_obj.name} Lv{sk['level']} "
+                        
+                        # 检查是否需要换行
+                        if draw.textlength(current_line_text + skill_part, font=small_font) > max_skill_width:
+                            # 如果当前行仅有前缀，则不得不追加（避免死循环或空行）
+                            if current_line_text == skill_prefix:
+                                current_line_text += skill_part
+                            else:
+                                # 绘制当前行并换行
+                                draw.text((x + 80, current_text_y), current_line_text, fill=(189, 147, 249), font=small_font)
+                                current_text_y += 18
+                                current_line_text = skill_part
+                        else:
+                            current_line_text += skill_part
+                
+                # 绘制最后一行
+                if current_line_text:
+                    draw.text((x + 80, current_text_y), current_line_text, fill=(189, 147, 249), font=small_font)
+                    current_text_y += 20
         
         # 物品描述（使用手动换行函数）
         max_desc_width = item_width - 90
@@ -601,7 +634,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
                 material_y += 20
                 
                 # 如果材料太多，显示省略号
-                if material_y - y > 250:
+                if material_y - y > 290:
                     draw.text((x + 15, material_y), "...", 
                              fill=(248, 248, 242), font=small_font)
                     break
@@ -637,7 +670,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
     # 底部信息
     draw.line([(padding, height-60), (width-padding, height-60)], fill=(98, 114, 164), width=2)
     draw.text((width/2, height-35), 
-             "Usage: 合成 <物品编号>", 
+             "Usage: 合成 <物品编号> | 合成#<页码>", 
              fill=(98, 114, 164), font=regular_font, anchor="mm")
     
     return image
@@ -973,14 +1006,15 @@ def create_buildings_panel(game: FishGame):
         game.ice_hole,
         game.mystic_shop,
         game.seven_statue,
-        game.forge_shop
+        game.forge_shop,
+        game.port
     ]
     
     # 基本设置
     padding = 25
     building_width = 475  # 提升25%: 380 * 1.25 = 475
     building_height = 400  # 提升25%: 280 * 1.25 = 350
-    buildings_per_row = 2
+    buildings_per_row = 3
     
     # 计算面板尺寸
     rows = len(buildings) // buildings_per_row
@@ -1087,6 +1121,9 @@ def create_buildings_panel(game: FishGame):
                     elif prereq_building == 'mystic_shop':
                         current_prereq_level = game.mystic_shop.level
                         prereq_building_name = "神秘商店"
+                    elif prereq_building == 'forge_shop':
+                        current_prereq_level = game.forge_shop.level
+                        prereq_building_name = "熔炉工坊"
                     
                     status_color = (80, 250, 123) if current_prereq_level >= required_level else (255, 85, 85)
                     prereq_text = f"{prereq_building_name}: Lv.{current_prereq_level}/{required_level}"
@@ -1121,6 +1158,167 @@ def create_buildings_panel(game: FishGame):
     draw.text((width/2, height-31), "Usage: 建筑 <建筑名称> <材料编号> 或者 建筑 <建筑名称> 升级", 
              fill=(98, 114, 164), font=regular_font, anchor="mm")
     
+    return image
+
+def create_oversea_panel(game: FishGame):
+    """创建港口讨伐面板"""
+    from src.libraries.fishgame.oversea import OverseaBattle, battle_buffs
+    
+    battle = game.oversea_battle
+    if not battle:
+        # 如果没有战斗，显示空面板或提示
+        width, height = 600, 400
+        image = Image.new('RGB', (width, height), color=(40, 42, 54))
+        draw = ImageDraw.Draw(image)
+        font_path = "src/static/poke/LXGWWenKai-Regular.ttf"
+        title_font = ImageFont.truetype(font_path, 32)
+        draw.text((width/2, height/2), "当前海域风平浪静", fill=(248, 248, 242), font=title_font, anchor="mm")
+        return image
+
+    # print(battle.data)
+
+    # 基本设置
+    width = 800
+    height = 1000
+    padding = 20
+    
+    image = Image.new('RGB', (width, height), color=(40, 42, 54))
+    draw = ImageDraw.Draw(image)
+    
+    # 加载字体
+    font_path = "src/static/poke/LXGWWenKai-Regular.ttf"
+    title_font = ImageFont.truetype(font_path, 32)
+    header_font = ImageFont.truetype(font_path, 24)
+    regular_font = ImageFont.truetype(font_path, 18)
+    small_font = ImageFont.truetype(font_path, 16)
+    
+    # 1. 标题区域
+    draw.text((width/2, 40), f"海怪讨伐 - {battle.data['monster_name']}", fill=(255, 85, 85), font=title_font, anchor="mm")
+    draw.text((width/2, 80), f"难度: {'★' * battle.data['difficulty']}", fill=(241, 250, 140), font=header_font, anchor="mm")
+    
+    # 2. 怪物 Buff 区域
+    y_offset = 120
+    draw.text((padding, y_offset), "环境与状态:", fill=(189, 147, 249), font=header_font)
+    y_offset += 35
+    
+    # 环境 Buff
+    env_id = battle.data.get('environment_buff', 0)
+    if env_id > 0:
+        env_info = next((b for b in battle_buffs['environment'] if b['id'] == env_id), None)
+        if env_info:
+            draw.text((padding + 20, y_offset), f"【环境】{env_info['name']}: {env_info['description']}", fill=(139, 233, 253), font=regular_font)
+            y_offset += 25
+            
+    # 怪物 Buff
+    for buff in battle.data.get('monster_buffs', []):
+        buff_info = next((b for b in battle_buffs['monster_negative'] if b['id'] == buff['id']), None)
+        if buff_info:
+            desc = buff_info['description'].replace('{level}', str(buff['level'])).replace('{level * 10}', str(buff['level'] * 10)).replace('{level * 5}', str(buff['level'] * 5)).replace('{level * 20}', str(buff['level'] * 20))
+            draw.text((padding + 20, y_offset), f"【特性】{buff_info['name']} Lv.{buff['level']}: {desc}", fill=(255, 121, 198), font=regular_font)
+            y_offset += 25
+            
+    # 奖励 Buff
+    for bid in battle.data.get('bonus_buffs', []):
+        buff_info = next((b for b in battle_buffs['bonus'] if b['id'] == bid), None)
+        if buff_info:
+            draw.text((padding + 20, y_offset), f"【奖励】{buff_info['name']}: {buff_info['description']}", fill=(241, 250, 140), font=regular_font)
+            y_offset += 25
+            
+    y_offset += 10
+    draw.line([(padding, y_offset), (width-padding, y_offset)], fill=(98, 114, 164), width=2)
+    y_offset += 20
+    
+    # 3. 战斗状态区域
+    status_text = {
+        "idle": "等待组队中...",
+        "fighting": "战斗进行中",
+        "success": "讨伐成功",
+        "fail": "讨伐失败"
+    }.get(battle.data['status'], "未知状态")
+    
+    draw.text((padding, y_offset), f"当前状态: {status_text}", fill=(80, 250, 123), font=header_font)
+    
+    # 船体耐久
+    ship_hp = battle.data['ship_hp']
+    ship_max = battle.data['ship_max_hp']
+    ship_pct = ship_hp / ship_max if ship_max > 0 else 0
+    draw.text((padding + 540, y_offset), f"船体耐久: {ship_hp}/{ship_max}", fill=(248, 248, 242), font=regular_font)
+    
+    y_offset += 40
+    
+    # 怪物血量 (隐藏数值，显示进度条或累计伤害)
+    monster_hp = battle.data['monster_hp']
+    monster_max = battle.data['monster_max_hp']
+    damage_dealt = monster_max - monster_hp
+    hp_pct = monster_hp / monster_max if monster_max > 0 else 0
+    
+    draw.text((padding, y_offset), f"怪物状态:", fill=(255, 85, 85), font=header_font)
+    draw.text((padding + 540, y_offset), f"累计造成伤害: {damage_dealt}", fill=(248, 248, 242), font=regular_font)
+    
+    # 绘制怪物血条 (反向，显示剩余血量比例)
+    bar_x = padding + 120
+    bar_y = y_offset + 8
+    draw.rectangle([(bar_x, bar_y), (bar_x + 400, bar_y + 15)], outline=(248, 248, 242))
+    draw.rectangle([(bar_x, bar_y), (bar_x + 400 * hp_pct, bar_y + 15)], fill=(255, 85, 85))
+    
+    y_offset += 40
+    draw.line([(padding, y_offset), (width-padding, y_offset)], fill=(98, 114, 164), width=2)
+    y_offset += 20
+    
+    # 4. 队伍列表
+    draw.text((padding, y_offset), "讨伐队伍:", fill=(189, 147, 249), font=header_font)
+    y_offset += 35
+    
+    players = battle.data['players']
+    if not players:
+        draw.text((padding + 20, y_offset), "暂无玩家加入", fill=(98, 114, 164), font=regular_font)
+        y_offset += 30
+    else:
+        # 分列显示
+        col_width = width // 2
+        for i, qq in enumerate(players):
+            col = i % 2
+            row = i // 2
+            x = padding + 20 + col * col_width
+            y = y_offset + row * 30
+            
+            # 获取玩家名字和装备
+            from src.libraries.fishgame.fishgame import FishPlayer, FishItem
+            p = FishPlayer(qq)
+            
+            # Use nickname if available
+            player_name = battle.data.get('player_names', {}).get(str(qq), p.name)
+            
+            item_id = battle.data['loadouts'].get(str(qq)) or battle.data['loadouts'].get(int(qq))
+            item_name = "无装备"
+            if item_id:
+                item = FishItem.get(item_id)
+                if item:
+                    item_name = item.name
+            
+            draw.text((x, y), f"{player_name} (装备: {item_name})", fill=(248, 248, 242), font=regular_font)
+            
+        y_offset += (len(players) + 1) // 2 * 30 + 10
+        
+    draw.line([(padding, y_offset), (width-padding, y_offset)], fill=(98, 114, 164), width=2)
+    y_offset += 20
+    
+    # 5. 战斗日志 (最近几条)
+    draw.text((padding, y_offset), "战斗日志:", fill=(139, 233, 253), font=header_font)
+    y_offset += 35
+    
+    logs = battle.data.get('logs', [])
+    # 取最后 10 条
+    recent_logs = logs[-20:]
+    for log in recent_logs:
+        # 简单的自动换行处理
+        wrapped_lines = wrap_text(log, small_font, width - 2 * padding - 20, draw)
+        for line in wrapped_lines:
+            if y_offset > height - 40:
+                break
+            draw.text((padding + 20, y_offset), '> ' + line, fill=(248, 248, 242), font=small_font)
+            y_offset += 20
+            
     return image
 
 

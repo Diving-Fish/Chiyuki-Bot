@@ -1,413 +1,16 @@
+from collections import defaultdict
 from typing import Optional
 from src.data_access.redis import DictRedisData, redis_global
 from src.libraries.fishgame.data import *
 from src.libraries.fishgame.buildings import *
-import hashlib
-import json
+from src.libraries.fishgame.player import FishPlayer
 import random
-import string
 import time
-import string
-
-def generate_mixed_gibberish(length=10):
-    # 中文字符的 Unicode 范围：常用汉字范围大约在 0x4E00-0x9FFF
-    result = []
-    
-    for _ in range(length):
-        # 随机决定是生成中文还是英文字符
-        if random.random() < 0.5:  # 50% 的概率生成中文
-            # 随机选择一个 Unicode 编码点，生成一个中文字符
-            char_code = random.randint(0x4E00, 0x9FFF)
-            result.append(chr(char_code))
-        else:  # 50% 的概率生成英文
-            # 随机选择英文字母（大小写）或数字
-            choices = string.ascii_letters + string.digits
-            result.append(random.choice(choices))
-    
-    return ''.join(result)
-
-def md5(s):
-    return hashlib.md5(s.encode()).hexdigest()
-
-
-def buff_available(buff):
-    expire = buff.get('expire', 0)
-    times = buff.get('time', 999)
-    return times > 0 and (expire == 0 or expire > time.time())
-
-with open('data/fishgame/fish_data_poke_ver.json', 'r', encoding='utf-8') as f:
-    fish_data_poke_ver = json.load(f)
-
-with open('data/fishgame/gacha.json', 'r', encoding='utf-8') as f:
-    gacha_data = json.load(f)
-
-with open('data/fishgame/fish_talent.json', 'r', encoding='utf-8') as f:
-    talent_data = json.load(f)
-
-# 神秘抽卡与宝玉转换数据
-try:
-    with open('data/fishgame/mystery.json', 'r', encoding='utf-8') as f:
-        _mystery_raw = json.load(f)
-        mystery_gacha_data = _mystery_raw.get('gacha', [])
-        mystery_jewel_table = _mystery_raw.get('jewel', {})  # { source_item_id(str): {target_id(str): weight(float)} }
-except FileNotFoundError:
-    mystery_gacha_data = []
-    mystery_jewel_table = {}
-
-
-class FishPlayer(DictRedisData):
-    def __init__(self, qq):
-        self.qq = qq
-        token = f'fishgame_user_data_{md5(str(qq))}'
-        super().__init__(token, default=FishPlayer.default_user_data())
-        self.bag = Backpack(self.data['bag'], self)
-        self.fish_log = FishLog(self.data['fish_log'])
-        self.equipment = Equipment(self.data['equipment'], self)
-        # 配件实例数据： { item_id(str): {"skills": [{id, level}, ...], "base_id": int} }
-        if 'accessory_meta' not in self.data:
-            self.data['accessory_meta'] = {}
-
-    @staticmethod
-    def try_get(qq):
-        token = f'fishgame_user_data_{md5(str(qq))}'
-        if redis_global.get(token) == None:
-            return None
-        return FishPlayer(qq)
-
-    @staticmethod
-    def default_user_data():
-        return {
-            "name": "渔者",
-            "level": 1,
-            "exp": 0,
-            "gold": 0,
-            "score": 0,
-            "fish_log": [],
-            "bag": {"1": 1},  # 修改为字典格式: {item_id: count}
-            "buff": [],
-            "equipment": {},
-            "last_gift_time": 0,
-            "master_ball_crafts": 0,
-            "accessory_meta": {},
-            # 天赋经验：{ talent_id(str): total_exp(int) }
-            "talent_exp": {}
-        }
-
-    def refresh_buff(self):
-        self.data['buff'] = list(filter(buff_available, self.data['buff']))
-    
-    @property
-    def name(self):
-        return self.data.get('name', '渔者')
-    
-    @property
-    def level(self):
-        return self.data['level']
-    
-    @property
-    def exp(self):
-        return self.data['exp']
-    
-    @property
-    def gold(self):
-        return self.data['gold']
-    
-    @property
-    def score(self):
-        return self.data['score']
-    
-    # @property
-    # def fish_log(self):
-    #     return self.data['fish_log']
-    
-    # @property
-    # def bag(self):
-    #     return self.data['bag']
-    
-    @property
-    def buff(self):
-        return self.data['buff']
-    
-    @property
-    def renew_accessory(self):
-        now_date = time.strftime('%Y-%m-%d', time.localtime())
-        date = self.data.get('accessory_renew_date', '')
-        if date != now_date:
-            return 0
-        return self.data.get('accessory_renew', 0)
-    
-    @renew_accessory.setter
-    def renew_accessory(self, value):
-        now_date = time.strftime('%Y-%m-%d', time.localtime())
-        self.data['accessory_renew_date'] = now_date
-        self.data['accessory_renew'] = value
-    
-    @property
-    def master_ball_crafts(self):
-        return self.data.get('master_ball_crafts', 0)
-    
-    @master_ball_crafts.setter
-    def master_ball_crafts(self, value):
-        self.data['master_ball_crafts'] = value
-    
-    @property
-    def power(self):
-        # 基础：等级作微量基础值（原逻辑保留）
-        base = self.level
-        for item in self.equipment.items:
-            if item:
-                base += item.power
-        for buff in self.buff:
-            base += buff.get('power', 0)
-        # 技能附加
-        ctx = self.get_skill_context()
-        base += ctx.get('flat_power', 0)
-        return base
-    
-    @property
-    def fever_power(self):
-        # Fever 模式下原有的削减逻辑 + 技能
-        base = self.level // 5
-        for item in self.equipment.items:
-            if item:
-                if item.type == 'rod' and item.id not in [403, 405]:
-                    base += item.power // 2
-                elif item.id == 406:
-                    base += item.power + 25
-                else:
-                    base += item.power
-        for buff in self.buff:
-            base += buff.get('power', 0)
-        ctx = self.get_skill_context()
-        base += ctx.get('flat_power', 0)
-        return base
-    
-    @staticmethod
-    def from_id(qq: str):
-        token = f'fishgame_user_data_{md5(str(qq))}'
-        if redis_global.exists(token):
-            return FishPlayer(qq)
-        return None
-    
-    @staticmethod
-    def get_target_exp(level):
-        base = level + 19
-        return int(base * 1.1 ** (level / 10))
-
-    def handle_level_up(self):
-        level_up = False
-        target_exp = self.get_target_exp(self.level)
-        while self.exp >= target_exp:
-            self.data['level'] += 1
-            self.data['exp'] -= target_exp
-            target_exp = self.get_target_exp(self.level)
-            level_up = True
-        if level_up:
-            return f"\n等级提升至 {self.level} 级！"
-        return ''
-
-    # ---------------- Skill System Helpers ----------------
-    def get_equipped_skills(self) -> list[dict]:
-        skills = []
-        meta = self.data.get('accessory_meta', {})
-        acc = self.equipment.accessory
-        if acc and str(acc.id) in meta:
-            skills.extend(meta[str(acc.id)].get('skills', []))
-        for it in [self.equipment.rod, self.equipment.tool]:
-            if it and getattr(it, 'skills', []):
-                skills.extend(it.skills)
-        return skills
-
-    def get_skill_context(self) -> dict:
-        from src.libraries.fishgame.data import fish_skills
-        ctx = {
-            'flat_power': 0,
-            'topic_power': {},
-            'fail_reward': 0,
-            'fail_item_percent': 0,
-            'crit_percent': 0,
-            'crit_rate': 0,
-            'gold_rate': 0,
-            'exp_rate': 0,
-            'new_fish_power': 0,
-            'old_fish_crit': 0
-        }
-        for inst in self.get_equipped_skills():
-            sk = fish_skills.get(inst['id'])
-            if not sk:
-                continue
-            lv = min(inst.get('level', 1), sk.max_level)
-            eff = sk.effect
-            if 'power' in eff:
-                ctx['flat_power'] += eff['power'][lv-1]
-            for key, val in eff.items():
-                if key.startswith('power_') and isinstance(val, list):
-                    topic = key.split('_',1)[1]
-                    ctx['topic_power'][topic] = ctx['topic_power'].get(topic, 0) + val[lv-1]
-            if 'fail_reward' in eff:
-                ctx['fail_reward'] = max(ctx['fail_reward'], eff['fail_reward'][lv-1])
-            if 'item_percent' in eff:
-                ctx['fail_item_percent'] = max(ctx['fail_item_percent'], eff['item_percent'][lv-1])
-            if 'crit_percent' in eff:
-                ctx['crit_percent'] += eff['crit_percent'][lv-1]
-            if 'crit_rate' in eff:
-                ctx['crit_rate'] = max(ctx['crit_rate'], eff['crit_rate'][lv-1])
-            if 'gold_rate' in eff:
-                ctx['gold_rate'] += eff['gold_rate'][lv-1]
-            if 'exp_rate' in eff:
-                ctx['exp_rate'] += eff['exp_rate'][lv-1]
-            if 'new_fish_power' in eff:
-                ctx['new_fish_power'] += eff['new_fish_power'][lv-1]
-            if 'old_fish_crit' in eff:
-                ctx['old_fish_crit'] += eff['old_fish_crit'][lv-1]
-        return ctx
-    
-
-    def get_talent_level(self, talent_id):
-        """根据已累积的天赋经验，返回当前天赋等级（从0开始，满级为效果长度）。
-
-        规则：get_talent_exp_level 返回的是每个等级的累计经验阈值数组，
-        等级 = 满足 total_exp >= 阈值 的数量。
-        """
-        # 保护：初始化存储
-        store = self.data.setdefault('talent_exp', {})
-        total_exp = int(store.get(str(talent_id), 0))
-        try:
-            thresholds = self.get_talent_exp_level(talent_id)
-        except Exception:
-            return 0
-        level = 0
-        for th in thresholds:
-            if total_exp >= th:
-                level += 1
-            else:
-                break
-        return level
-
-    @staticmethod
-    def get_talent_exp_level(talent_id):
-        talent = talent_data[talent_id - 1]
-        base_cost = talent.get('base_cost', 100)
-        power_cost = talent.get('power_cost', 2)
-        # 取效果数组长度作为最大等级
-        max_level = 1
-        for _key, v in talent.get('effect', {}).items():
-            if isinstance(v, list):
-                max_level = max(max_level, len(v))
-        # 构造累计经验阈值：
-        # L1 阈值 = base_cost * power_cost^0
-        # L2 阈值 = L1 + base_cost * power_cost^1
-        # ...
-        thresholds = []
-        cumulative = 0
-        for i in range(max_level):
-            cost_i = int(base_cost * (power_cost ** i))
-            cumulative += cost_i
-            thresholds.append(cumulative)
-        return thresholds
-
-    def add_talent_exp(self, talent_id, exp):
-        """为指定天赋增加经验。
-
-        返回：(new_level, level_up_count)
-        - new_level: 增加经验后的最新等级
-        - level_up_count: 本次增加带来的等级提升数量（可为 0）
-        """
-        if exp == 0:
-            return self.get_talent_level(talent_id), 0
-        if exp < 0:
-            # 不允许负经验；如需支持可在此修改为回退逻辑
-            exp = 0
-
-        store = self.data.setdefault('talent_exp', {})
-        key = str(talent_id)
-        old_total = int(store.get(key, 0))
-        old_level = self.get_talent_level(talent_id)
-        thresholds = self.get_talent_exp_level(talent_id)
-        max_total = thresholds[-1] if thresholds else 0
-
-        new_total = old_total + int(exp)
-        if max_total > 0:
-            new_total = min(new_total, max_total)
-        new_total = max(new_total, 0)
-        store[key] = new_total
-
-        new_level = self.get_talent_level(talent_id)
-        level_up = max(0, new_level - old_level)
-        # 自动保存
-        self.save()
-        return new_level, level_up
-
-    # ---------------- Talent Status Interface ----------------
-    def get_talent_status(self, talent_id: int, as_text: bool = False):
-        """查看玩家在某个天赋上的当前经验与等级。
-
-        返回：
-        - as_text=False: dict
-            {
-              "talent_id": int,
-              "name": str,
-              "level": int,           # 当前等级（0..max_level）
-              "max_level": int,
-              "total_exp": int,       # 当前累计经验
-              "current_need": int,    # 本级已累经验（相对上一级阈值）
-              "current_total": int,   # 达到当前等级所需累计阈值
-              "next_total": int,      # 下一级阈值（满级时等于最后阈值）
-              "need_to_next": int     # 距离下一级还需经验（满级为0）
-            }
-        - as_text=True: str 友好提示文本
-        """
-        # 数据与阈值
-        store = self.data.setdefault('talent_exp', {})
-        total = int(store.get(str(talent_id), 0))
-        thresholds = self.get_talent_exp_level(talent_id)
-        max_level = len(thresholds)
-        level = self.get_talent_level(talent_id)
-
-        # 计算区间
-        current_total = thresholds[level-1] if level > 0 else 0
-        next_total = thresholds[level] if level < max_level else thresholds[-1] if thresholds else 0
-        current_need = max(0, total - current_total)
-        need_to_next = 0 if level >= max_level else max(0, next_total - total)
-
-        # 名称
-        try:
-            name = talent_data[talent_id - 1].get('name', f'Talent {talent_id}')
-        except Exception:
-            name = f'Talent {talent_id}'
-
-        info = {
-            'talent_id': talent_id,
-            'name': name,
-            'level': level,
-            'max_level': max_level,
-            'total_exp': total,
-            'current_need': current_need,
-            'current_total': current_total,
-            'next_total': next_total,
-            'need_to_next': need_to_next
-        }
-
-        if not as_text:
-            return info
-
-        # 文本化
-        if max_level == 0:
-            return f"{name}：暂无等级信息"
-        if level >= max_level:
-            return f"{name} Lv.{level}/{max_level}（满级），累计经验 {total}"
-        # 当前级进度与下一阈值
-        seg_total = next_total - current_total if next_total > current_total else 1
-        seg_cur = min(max(total - current_total, 0), seg_total)
-        percent = int(seg_cur * 100 / seg_total)
-        return (
-            f"{name} Lv.{level}/{max_level} | 当前经验 {total} | 距离下一级还需 {need_to_next}\n"
-            f"（本级进度：{seg_cur}/{seg_total}，{percent}%）"
-        )
 
 
 class FishGame(DictRedisData):
     def __init__(self, group_id=0):
+        self.group_id = group_id
         token = f'fishgame_group_data_{group_id}'
         super().__init__(token, default=FishGame.default_group_data())
         self.fish_log = FishLog(self.data["fish_log"])
@@ -416,6 +19,13 @@ class FishGame(DictRedisData):
         self.try_list = []
         self.leave_time = 0
         self.init_buildings()
+        
+        # Load Oversea Battle if exists
+        if 'current_oversea_id' in self.data:
+            from src.libraries.fishgame.oversea import OverseaBattle
+            self.oversea_battle = OverseaBattle(self.group_id, self.data['current_oversea_id'])
+        else:
+            self.oversea_battle = None
 
     def init_buildings(self):
         # Buildings
@@ -450,6 +60,10 @@ class FishGame(DictRedisData):
         if 'forge_shop' not in self.data:
             self.data['forge_shop'] = {}
         self.forge_shop = ForgeShop(self.data['forge_shop'])
+
+        if 'port' not in self.data:
+            self.data['port'] = {}
+        self.port = Port(self.data['port'])
 
     @property
     def is_fever(self):
@@ -702,7 +316,11 @@ class FishGame(DictRedisData):
                 success_rate += (40 - 40 * 0.9 ** (diff / 5))
             else:
                 success_rate *= 0.9 ** (-diff / 5)
-            # 看破触发相当于额外一次收益机会，不改变成功率（若想影响可在此调整）
+            
+            # 技能17: 强行 (增加成功率)
+            success_rate_bonus = skill_ctx.get('success_rate', 0)
+            if success_rate_bonus > 0:
+                success_rate = min(100, success_rate * (1 + success_rate_bonus / 100))
 
         for i, buff in enumerate(player.data['buff']):
             if buff.get('time', 0) > 0:
@@ -725,20 +343,7 @@ class FishGame(DictRedisData):
 
             # 看破（额外渔获）与超幸运倍率
             add_line = ''
-            crit_percent = skill_ctx.get('crit_percent', 0)
-            if player.fish_log.caught(fish.id):
-                crit_percent += skill_ctx.get('old_fish_crit', 0)
-            talent_types = ['fire', 'water', 'grass', 'ice', 'electric', 'ghost', 'ground']
-            for weak in fish.weakness:
-                if weak in talent_types:
-                    talent_id = talent_types.index(weak) + 1
-                    talent_level = player.get_talent_level(talent_id)
-                    if talent_level > 0:
-                        crit_percent += 5 * talent_level  # 每级增加 5% 几率
-            
-            talent_8_level = player.get_talent_level(8)
-            if talent_8_level > 0:
-                crit_percent += 0.01 * talent_8_level * max(0, diff)
+            crit_percent = player.get_crit_percent(fish, diff)
 
             is_crit = random.random() < min(crit_percent, 100) / 100
             if is_crit:
@@ -769,8 +374,13 @@ class FishGame(DictRedisData):
             
             # fever期间鱼不会被清除，非fever期间捕获成功后清除
             if not self.is_fever:
-                self.current_fish = None
-                self.try_list = []
+                # 技能18: 再生力 (概率留下鱼)
+                regenerate_percent = skill_ctx.get('regenerate_percent', 0)
+                if random.random() < regenerate_percent / 100:
+                    msg += f"\n由于【再生力】的效果，{fish.name} 留了下来！"
+                else:
+                    self.current_fish = None
+                    self.try_list = []
             
             return {
                 "code": 0,
@@ -801,6 +411,22 @@ class FishGame(DictRedisData):
             msg += player.handle_level_up()
             player.save()
             
+            # 技能12: 不屈 (失败后可再次尝试)
+            # 冷却时间逻辑暂未实现，这里简化为本次不计入尝试列表
+            cool_down = skill_ctx.get('cool_down', 0)
+            # 检查冷却时间 (使用 player.data['last_unyielding_time'])
+            can_retry = False
+            if cool_down > 0:
+                last_time = player.data.get('last_unyielding_time', 0)
+                if time.time() - last_time > cool_down * 60:
+                    can_retry = True
+                    player.data['last_unyielding_time'] = time.time()
+                    player.save()
+            
+            if can_retry:
+                self.try_list.remove(player.qq)
+                msg += f"\n由于【不屈】的效果，你可以再次尝试捕获！"
+
             # fever期间失败不会逃跑，只有非fever期间才会逃跑
             if not self.is_fever:
                 flee_rate = {
@@ -994,12 +620,22 @@ class FishGame(DictRedisData):
     def get_shop(self):
         return list(filter(lambda x: x.buyable and self.can_buy(x.id)['code'] == 0, fish_item.values()))
     
+    def check_requirements(self, item: FishItem):
+        for building_name in item.require:
+            building: BuildingBase = getattr(self, building_name, None)
+            if building is None or not isinstance(building, BuildingBase):
+                continue
+            if building.level < item.require[building_name]:
+                return False, f"{building.name} 等级不足，无法购买或合成该物品（需要 {building.name} {item.require[building_name]} 级）"
+        return True, ""
+
     def can_buy(self, id):
         good: FishItem = FishItem.get(id)
-        if good.craft_shop_level > self.mystic_shop.level:
+        ret, msg = self.check_requirements(good)
+        if ret is False:
             return {
                 "code": -3,
-                "message": f"神秘商店等级不足，无法购买该物品（需要神秘商店 {good.craft_shop_level} 级）"
+                "message": msg
             }
         return {
             "code": 0,
@@ -1017,6 +653,16 @@ class FishGame(DictRedisData):
             return {
                 "code": -1,
                 "message": "金币不足"
+            }
+        if good.id == 209 and len(player.fish_log.caught_set) < 100:
+            return {
+                "code": -4,
+                "message": "购买此道具需要至少捕获100种不同的鱼"
+            }
+        if good.id == 210 and len(player.fish_log.caught_set) < len(fish_data):
+            return {
+                "code": -4,
+                "message": "购买此道具需要解锁所有图鉴"
             }
         can_buy = self.can_buy(id)
         if can_buy['code'] != 0:
@@ -1472,6 +1118,81 @@ class FishGame(DictRedisData):
                 "code": 0,
                 "message": f"神秘的气息包裹住了 {item.name}，它化作了 {FishItem.get(str(picked)).name}！"
             }
+        elif self.forge_shop.level >= 1:
+            if item.id in (301, 303, 305, 307, 309, 311):
+                player.bag.pop_item(item.id)
+                player.bag.add_item(33)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 精良鱼叉！"
+                }
+            elif 315 <= item.id <= 318:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(34)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 沙漠鱼叉！"
+                }
+            elif 320 <= item.id <= 323:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(35)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 森林鱼叉！"
+                }
+            elif 325 <= item.id <= 328:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(36)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 火山鱼叉！"
+                }
+            elif 330 <= item.id <= 333:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(37)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 天空鱼叉！"
+                }
+            elif 335 <= item.id <= 338:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(38)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 雪山鱼叉！"
+                }
+            elif 340 <= item.id <= 343:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(39)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 金属鱼叉！"
+                }
+            elif 345 <= item.id <= 348:
+                player.bag.pop_item(item.id)
+                player.bag.add_item(40)
+                player.save()
+                return {
+                    "code": 0,
+                    "message": f"成功将 {item.name} 制作为 神秘鱼叉！"
+                }
+            elif item.id == 310 or (33 <= item.id <= 40):
+                return {
+                    "code": -2,
+                    "message": f"请使用【港口 物品 {item.id}】指令来携带该物品参加港口战斗"
+                }
+            else:
+                return {
+                    "code": -2,
+                    "message": "该物品无法使用，或效果暂未实装！"
+                }
         else:
             return {
                 "code": -2,
@@ -1492,9 +1213,7 @@ class FishGame(DictRedisData):
     
     def get_craftable_items(self):
         """获取所有可合成的物品"""
-    # 仅展示：可合成 且 神秘商店等级 >= 物品要求的 craft_shop_level
-        mystic_level = getattr(self.mystic_shop, 'level', 0)
-        return [item for item in fish_item.values() if item.craftable and mystic_level >= getattr(item, 'craft_shop_level', -1)]
+        return [item for item in fish_item.values() if item.craftable and self.check_requirements(item)[0]]
     
     def craft_item(self, player: FishPlayer, item_id: int):
         """合成物品"""
@@ -1511,13 +1230,12 @@ class FishGame(DictRedisData):
                 "message": "该物品无法合成"
             }
 
-    # 神秘商店等级 gating：需要 mystic_shop.level >= craft_shop_level
-        mystic_level = getattr(self.mystic_shop, 'level', 0)
-        required_level_threshold = getattr(item, 'craft_shop_level', -1)
-        if mystic_level < required_level_threshold:
+        # 检查条件
+        can_craft, msg = self.check_requirements(item)
+        if not can_craft:
             return {
-                "code": -4,
-                "message": f"神秘商店等级不足，需要 >= {required_level_threshold}（当前 {mystic_level}）"
+                "code": -2,
+                "message": msg
             }
         
         # 统计需要的材料
@@ -1528,6 +1246,10 @@ class FishGame(DictRedisData):
         # 检查材料是否充足
         for material_id, required_count in material_requirements.items():
             current_count = player.bag.get_item_count(material_id)
+            # 扣除已装备的物品
+            equipped_count = player.equipment.ids.count(material_id)
+            current_count -= equipped_count
+            
             if current_count < required_count:
                 material_item = FishItem.get(str(material_id))
                 material_name = material_item.name if material_item else f"物品{material_id}"
@@ -1767,3 +1489,367 @@ class FishGame(DictRedisData):
     def get_pot_status(self):
         pot = self.big_pot
         return f'当前大锅等级 { pot.level }\n内容量：{pot.current} / {pot.capacity} （消耗速度：{pot.consume_speed} / 10min）\n平均渔力加成：{pot.average_power_boost }\n玩家渔力加成：{pot.power_boost}'
+
+    def sign_in(self, player: FishPlayer):
+        # 检查建筑
+        if self.seven_statue.level < 1:
+            return {
+                "code": "-1",
+                "message": "你没有【七天神像】，无法签到"
+            }
+        
+        # 检查是否已签到
+        today = time.strftime("%Y-%m-%d", time.localtime())
+        if 'sign_in_record' not in self.data:
+            self.data['sign_in_record'] = {}
+        
+        record = self.data['sign_in_record']
+        if record.get('date') != today:
+            record['date'] = today
+            record['players'] = []
+        
+        if player.qq in record['players']:
+            return {
+                "code": "-1",
+                "message": "你今天已经签到过了"
+            }
+        
+        # 签到逻辑
+        record['players'].append(player.qq)
+        self.save()
+        
+        # 奖励逻辑
+        rewards = []
+        msg = "签到成功！获得奖励：\n"
+        
+        # 1. 第一个签到的人
+        if len(record['players']) == 1:
+            player.bag.add_item(408, 1)
+            rewards.append("神秘之涎 x1")
+        
+        # 获取今日主题
+        current_topic = weekday_topic[time.localtime().tm_wday]
+        
+        topic_item_map = {
+            "沙漠": (315, 319),
+            "森林": (320, 324),
+            "洞穴": (325, 329),
+            "海洋": (330, 334),
+            "雪山": (335, 339),
+            "火山": (340, 344),
+            "遗迹": (345, 349)
+        }
+        
+        topic_range = topic_item_map.get(current_topic)
+        
+        pool = []
+        
+        if topic_range:
+            theme_r3 = list(range(topic_range[0], topic_range[0] + 3))
+            theme_r4 = list(range(topic_range[0] + 3, topic_range[1] + 1))
+        else:
+            theme_r3 = []
+            theme_r4 = []
+            
+        if self.seven_statue.level == 1:
+            # 301-313 + Theme R3
+            pool = list(range(301, 314)) + theme_r3
+        elif self.seven_statue.level == 2:
+            # 301-314 + Theme R3
+            pool = list(range(301, 315)) + theme_r3
+        elif self.seven_statue.level >= 3:
+            # 301-314 + Theme R3 + Theme R4
+            pool = list(range(301, 315)) + theme_r3 + theme_r4
+            
+        # Randomly pick one
+        if pool:
+            reward_id = random.choice(pool)
+            player.bag.add_item(reward_id, 1)
+            item_name = fish_item[reward_id].name if reward_id in fish_item else f"Item {reward_id}"
+            rewards.append(f"{item_name} x1")
+            
+        player.save()
+        
+        return {
+            "code": 0,
+            "message": msg + "\n".join(rewards)
+        }
+
+    # ---------------- Oversea Battle ----------------
+    def check_oversea_spawn(self):
+        """检查是否生成港口怪物"""
+        if self.port.level < 1:
+            return False
+        
+        # 检查时间 8:00 - 24:00
+        hour = time.localtime().tm_hour
+        if hour < 8:
+            return False
+        
+        # 检查是否已有战斗
+        if self.oversea_battle and self.oversea_battle.data['status'] in ['fighting']:
+            return False
+        
+        # 检查本小时是否已经生成过
+        current_hour_str = time.strftime("%Y-%m-%d-%H")
+        if self.data.get('last_oversea_hour') == current_hour_str:
+            return False
+            
+        self.spawn_oversea_monster()
+        return True
+
+    def spawn_oversea_monster(self):
+        from src.libraries.fishgame.oversea import OverseaBattle
+        
+        # 增加计数
+        self.data['oversea_count'] = self.data.get('oversea_count', 0) + 1
+        battle_id = self.data['oversea_count']
+        self.data['current_oversea_id'] = battle_id
+        self.data['last_oversea_hour'] = time.strftime("%Y-%m-%d-%H")
+        # 难度 = 1 ~ 港口等级
+        difficulty = random.randint(1, self.port.level)
+        
+        self.oversea_battle = OverseaBattle(self.group_id, battle_id, difficulty, self.port.level)
+        self.save()
+        return self.oversea_battle
+
+    def _settle_oversea_rewards(self, success: bool):
+        battle = self.oversea_battle
+        diff = battle.data['difficulty']
+        
+        # Base rewards
+        base_exp = [20000, 40000, 60000][diff - 1]
+        base_gold = [20000, 40000, 60000][diff - 1]
+        base_drop_count = [6, 12, 20][diff - 1]
+        
+        # Bonus Buffs
+        bonus_gold_pct = 0.0
+        bonus_exp_pct = 0.0
+        bonus_drop_pct = 0.0
+        bonus_token = 0
+        
+        for buff_id in battle.data.get('bonus_buffs', []):
+            if buff_id == 201: # 稀有: +20% Gold
+                bonus_gold_pct += 0.2
+            elif buff_id == 202: # 超级稀有: +50% Gold
+                bonus_gold_pct += 0.5
+            elif buff_id == 203: # 强者: +1 Token
+                bonus_token += 1
+            elif buff_id == 204: # 大体型: +50% Drop
+                bonus_drop_pct += 0.5
+            elif buff_id == 205:
+                bonus_exp_pct += 0.2
+                
+        logs = []
+        
+        monster_id = battle.data['monster_id']
+        monster_drops = []
+        if monster_id in fish_data:
+            monster_drops = fish_data[monster_id].drops
+        
+        for qq in battle.data['players']:
+            player = FishPlayer(qq)
+            player_name = battle.data.get('player_names', {}).get(str(qq), player.name)
+            
+            # Variance 0.9 - 1.1
+            variance = random.uniform(0.9, 1.1)
+            
+            if success:
+                exp = int(base_exp * (1 + bonus_exp_pct) * variance)
+                gold = int(base_gold * (1 + bonus_gold_pct) * variance)
+                drop_count = int(base_drop_count * (1 + bonus_drop_pct) * variance)
+                
+                player.data['exp'] += exp
+                player.data['gold'] += gold
+                
+                # Drops
+                got_drops = {}
+                if monster_drops:
+                    items = [d['item_id'] for d in monster_drops]
+                    weights = [d['probability'] for d in monster_drops]
+                    
+                    for _ in range(drop_count):
+                        item_id = random.choices(items, weights=weights, k=1)[0]
+                        player.bag.add_item(item_id, 1)
+                        got_drops[item_id] = got_drops.get(item_id, 0) + 1
+
+                if 206 in battle.data.get('bonus_buffs', []):
+                    gems = []
+                    for gem in [314, 319, 324, 329, 334, 339, 344, 349]:
+                        if gem != monster_drops[-1].get('item_id', 0):
+                            gems.append(gem)
+                    jewel_id = random.choice(gems)
+                    player.bag.add_item(jewel_id, diff)
+                    got_drops[jewel_id] = got_drops.get(jewel_id, 0) + diff
+                
+                # Tokens
+                # 30: 海洋之证, 31: 风暴之证, 32: 最强之证
+                token_id = 30 + (diff - 1)
+                token_count = 1 + bonus_token
+                player.bag.add_item(token_id, token_count)
+                
+                msg = f"获得 {exp} 经验, {gold} 金币, {FishItem.get(token_id).name} x{token_count}"
+                if got_drops:
+                    drop_msg = []
+                    for iid, count in got_drops.items():
+                        item = FishItem.get(iid)
+                        drop_msg.append(f"{item.name} x{count}")
+                    msg += ", " + ", ".join(drop_msg)
+                msg += player.handle_level_up()
+                logs.append(f"{player_name} {msg}")
+                
+            else:
+                # Fail
+                # Exp = Base * (Max - Current) / Max
+                progress = (battle.data['monster_max_hp'] - battle.data['monster_hp']) / battle.data['monster_max_hp']
+                exp = int(base_exp * progress * variance)
+                player.data['exp'] += exp
+                logs.append(f"{player_name} 获得 {exp} 经验 (进度 {progress*100:.1f}%){player.handle_level_up()}")
+            
+            # 扣除道具
+            if 205 not in battle.data.get('bonus_buffs', []):
+                item_id = battle.data['loadouts'].get(str(qq)) or battle.data['loadouts'].get(int(qq))
+                if item_id:
+                    item_id = int(item_id)
+                    deduct_count = 0
+                    if item_id == 310:
+                        deduct_count = 1
+                    elif 33 <= item_id <= 40:
+                        deduct_count = 10
+                    
+                    if deduct_count > 0:
+                        player.bag.pop_item(item_id, deduct_count)
+
+                player.save()
+            
+        battle.data['logs'].extend(logs)
+        battle.save()
+        return logs
+
+    def process_oversea_turn(self):
+        """推进战斗回合"""
+        if not self.oversea_battle:
+            return None
+        
+        if self.oversea_battle.data['status'] != 'fighting':
+            return None
+            
+        # 检查是否有人参战
+        if not self.oversea_battle.data['players']:
+            # 无人参战，不推进回合，或者自动失败？
+            # 需求：每3分钟会前进一轮
+            pass
+            
+        res = self.oversea_battle.process_round()
+        
+        if res['status'] == 'success':
+            res['logs'].extend(self._settle_oversea_rewards(True))
+        elif res['status'] == 'fail':
+            res['logs'].extend(self._settle_oversea_rewards(False))
+            
+        return res
+
+    def join_oversea(self, player: FishPlayer, nickname: str = None):
+        if not self.oversea_battle:
+            return {"code": -1, "message": "当前没有海怪袭击"}
+        
+        if self.oversea_battle.data['status'] != 'idle':
+            return {"code": -2, "message": "战斗已经开始或已结束，无法加入"}
+            
+        # 检查每日次数
+        # 每日次数限制 = 港口等级
+        today = time.strftime("%Y-%m-%d")
+        if player.data.get('last_raid_date') != today:
+            player.data['last_raid_date'] = today
+            player.data['raid_count'] = 0
+            player.save()
+            
+        max_count = self.port.level
+        if self.group_id in (663516277,):
+            max_count += 1
+
+        if player.data.get('raid_count', 0) >= max_count:
+            return {"code": -3, "message": f"今日讨伐次数已耗尽（上限 {max_count} 次）"}
+            
+        if player.qq in self.oversea_battle.data['players']:
+            return {"code": -4, "message": "你已经加入了讨伐队伍"}
+            
+        if len(self.oversea_battle.data['players']) >= self.port.level + 1:
+            return {"code": -5, "message": "讨伐队伍人数已达上限"}
+        
+        self.oversea_battle.data['players'].append(player.qq)
+        if nickname:
+            self.oversea_battle.data['player_names'][str(player.qq)] = nickname
+        self.oversea_battle.save()
+        return {"code": 0, "message": "成功加入讨伐队伍"}
+
+    def leave_oversea(self, player: FishPlayer):
+        if not self.oversea_battle:
+            return {"code": -1, "message": "当前没有海怪袭击"}
+            
+        if self.oversea_battle.data['status'] != 'idle':
+            return {"code": -2, "message": "战斗已经开始，无法退出"}
+            
+        if player.qq not in self.oversea_battle.data['players']:
+            return {"code": -3, "message": "你不在讨伐队伍中"}
+            
+        self.oversea_battle.data['players'].remove(player.qq)
+        # 移除装备配置
+        if player.qq in self.oversea_battle.data['loadouts']:
+            del self.oversea_battle.data['loadouts'][player.qq]
+            
+        self.oversea_battle.save()
+        return {"code": 0, "message": "已退出讨伐队伍"}
+
+    def equip_oversea_item(self, player: FishPlayer, item_id: str):
+        if not self.oversea_battle:
+            return {"code": -1, "message": "当前没有海怪袭击"}
+            
+        if self.oversea_battle.data['status'] != 'idle':
+            return {"code": -6, "message": "战斗已经开始，无法更换装备"}
+
+        if player.qq not in self.oversea_battle.data['players']:
+            return {"code": -2, "message": "请先加入讨伐队伍"}
+            
+        # 检查物品
+        item = FishItem.get(item_id)
+        if not item:
+            return {"code": -3, "message": "物品不存在"}
+            
+        # 检查类型 (鱼叉 33-40, 尾鳍 310)
+        valid_ids = [33, 34, 35, 36, 37, 38, 39, 40, 310]
+        if item.id not in valid_ids:
+            return {"code": -5, "message": "该物品无法在讨伐中使用"}
+            
+        # 检查是否拥有
+        required_count = 1
+        if item.id in [33, 34, 35, 36, 37, 38, 39, 40]: # Harpoons
+            required_count = 10
+        
+        if player.bag.get_item_count(item.id) < required_count:
+            return {"code": -4, "message": f"你没有足够的该物品（需要 {required_count} 个）"}
+            
+        self.oversea_battle.data['loadouts'][player.qq] = item.id
+        self.oversea_battle.save()
+        return {"code": 0, "message": f"已装备 {item.name}"}
+
+    def start_oversea_battle(self):
+        if not self.oversea_battle:
+            return {"code": -1, "message": "当前没有海怪袭击"}
+            
+        if self.oversea_battle.data['status'] != 'idle':
+            return {"code": -2, "message": "战斗状态不正确"}
+            
+        if not self.oversea_battle.data['players']:
+            return {"code": -3, "message": "队伍中没有玩家"}
+            
+        # 扣除次数
+        players_obj = []
+        for qq in self.oversea_battle.data['players']:
+            p = FishPlayer(qq)
+            p.data['raid_count'] = p.data.get('raid_count', 0) + 1
+            p.save()
+            players_obj.append(p)
+            
+        self.oversea_battle.start_battle(players_obj, self.oversea_battle.data['loadouts'])
+        return {"code": 0, "message": "战斗开始！"}

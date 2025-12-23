@@ -1,24 +1,21 @@
 {
     "gacha": [
-        {"type": "score", "value": 100, "weight": 39},
+        {"type": "score", "value": 100, "weight": 40},
         {"type": "score", "value": 200, "weight": 20},
         {"type": "score", "value": 500, "weight": 10},
 
-        {"type": "item", "value": 15, "weight": 8},
-        {"type": "item", "value": 16, "weight": 1.5},
+        {"type": "item", "value": 15, "weight": 15},
+        {"type": "item", "value": 16, "weight": 3},
         {"type": "item", "value": 17, "weight": 0.4},
         {"type": "item", "value": 18, "weight": 0.1},
 
-        {"type": "item", "value": 25, "weight": 1},
+        {"type": "item", "value": 25, "weight": 1.5},
 
-        {"type": "item", "value": 2, "weight": 3},
         {"type": "item", "value": 3, "weight": 2},
-        {"type": "item", "value": 5, "weight": 4},
         {"type": "item", "value": 6, "weight": 3},
-        {"type": "item", "value": 23, "weight": 0.5},
-        {"type": "item", "value": 8, "weight": 4},
+        {"type": "item", "value": 23, "weight": 1},
         {"type": "item", "value": 9, "weight": 3},
-        {"type": "item", "value": 24, "weight": 0.5}
+        {"type": "item", "value": 24, "weight": 1}
     ],
     "jewel": {
         "302": {

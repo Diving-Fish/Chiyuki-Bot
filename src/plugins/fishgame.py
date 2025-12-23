@@ -81,6 +81,39 @@ async def try_spawn_fish():
                     await get_bot().send_msg(message_type="group", group_id=group, message=f"{fish.name}【{fish.rarity}】 █████！\n使用【████】指███████获████！")
                 else:
                     await get_bot().send_msg(message_type="group", group_id=group, message=f"{fish.name}【{fish.rarity}】 出现了！\n使用【捕鱼】指令进行捕获吧！")
+        
+        # 检查港口怪物生成
+        if game.check_oversea_spawn():
+            battle = game.oversea_battle
+            await get_bot().send_msg(message_type="group", group_id=group, message=f"警报！海上发现了巨大的身影！\n{battle.data['monster_name']} 正在接近！\n请各位渔者前往【港口】进行讨伐！")
+
+# 港口战斗推进 (每3分钟)
+@scheduler.scheduled_job("cron", minute="*/3")
+async def process_oversea_battle():
+    group_list = await get_bot().get_group_list()
+    for obj in group_list:
+        group = obj['group_id']
+        if not plugin_manager.get_enable(group, __plugin_meta["name"]):
+            continue
+        if group not in fish_games:
+            fish_games[group] = FishGame(group)
+        game: FishGame = fish_games[group]
+        
+        res = game.process_oversea_turn()
+        if res:
+            # 发送战斗日志
+            msg = f"【港口战报】第 {game.oversea_battle.data['current_round']} 轮结束\n"
+            if 'logs' in res:
+                # 只显示最后几条关键日志，避免刷屏
+                logs = res['logs']
+                msg += "\n".join(logs)
+            
+            if res['status'] == 'success':
+                msg += f"\n\n讨伐成功！{game.oversea_battle.data['monster_name']} 已被击败！"
+            elif res['status'] == 'fail':
+                msg += f"\n\n讨伐失败... {res['message']}"
+                
+            await get_bot().send_msg(message_type="group", group_id=group, message=msg)
 
 
 @scheduler.scheduled_job("cron", hour=19, minute=30)
@@ -198,33 +231,45 @@ skill_list_cmd = on_command('技能列表', rule=__group_checker)
 
 @skill_list_cmd.handle()
 async def _(event: Event):
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
     player = FishPlayer(str(event.user_id))
     from src.libraries.fishgame.data import get_skill, FishItem
-    equipped_items = [player.equipment.rod, player.equipment.tool, player.equipment.accessory]
-    all_skills = {}
-    for eq in equipped_items:
-        if not eq:
-            continue
-        for sk in getattr(eq, 'skills', []):
-            sk_id = sk['id']
-            sk_level = sk['level']
-            if sk_id in all_skills:
-                all_skills[sk_id] = max(all_skills[sk_id], sk_level)
-            else:
-                all_skills[sk_id] = sk_level
-    if not all_skills:
+    skills = player.get_equipped_skills()
+    if len(skills) == 0:
         await skill_list_cmd.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment.text("当前没有任何生效技能")
         ]))
         return
+    
     lines = ["当前生效技能："]
-    for sk_id, lv in sorted(all_skills.items()):
+    for skill in skills:
+        sk_id = skill['id']
+        lv = skill['level']
         sk_obj = get_skill(sk_id)
         if not sk_obj:
             continue
         lines.append(f" - {sk_obj.name} Lv{lv} | {sk_obj.desc}")
         lines.append(sk_obj.get_detail_for_level(lv))
+        
+        if game.port.level > 0 and sk_obj.detail_oversea:
+            fmt_values = {}
+            for k, v in sk_obj.effect.items():
+                if isinstance(v, list):
+                    if len(v) >= lv:
+                        fmt_values[k] = v[lv-1]
+                    else:
+                        fmt_values[k] = v[-1]
+                else:
+                    fmt_values[k] = v
+            try:
+                lines.append(f"[港口] {sk_obj.detail_oversea.format(**fmt_values)}")
+            except:
+                pass
+
     await skill_list_cmd.send(Message([
         MessageSegment.reply(event.message_id),
         MessageSegment.text('\n'.join(lines))
@@ -643,7 +688,19 @@ async def _(event: Event, message: Message = CommandArg()):
     
     args = str(message).strip()
     
+    page = 1
+    is_page_cmd = False
+    
     if args == '' or args == '合成':
+        is_page_cmd = True
+    elif args.startswith('#'):
+        try:
+            page = int(args[1:])
+            is_page_cmd = True
+        except ValueError:
+            pass
+
+    if is_page_cmd:
         # 显示合成面板
         craftable_items = game.get_craftable_items()
         if not craftable_items:
@@ -653,7 +710,16 @@ async def _(event: Event, message: Message = CommandArg()):
             ]))
             return
         
-        craft_panel = create_craft_panel(craftable_items, player.bag, player)
+        # Pagination logic
+        items_per_page = 12 # 4x3
+        total_pages = (len(craftable_items) - 1) // items_per_page + 1
+        page = max(1, min(page, total_pages))
+        
+        start_idx = (page - 1) * items_per_page
+        end_idx = start_idx + items_per_page
+        page_items = craftable_items[start_idx:end_idx]
+        
+        craft_panel = create_craft_panel(page_items, player.bag, player, page, total_pages)
         await craft.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment("image", {
@@ -811,6 +877,102 @@ async def _(event: Event, message: Message = CommandArg()):
         MessageSegment.text(ret['message'])
     ]))
 
+# ---------------- Port Commands ----------------
+port_cmd = on_command('港口', rule=__group_checker)
+
+@port_cmd.handle()
+async def _(event: Event, message: Message = CommandArg()):
+    if not hasattr(event, 'group_id'):
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+    
+    args = str(message).strip().split()
+    if not args or args[0] == '帮助':
+        help_msg = """港口指令帮助：
+港口 面板 - 查看当前海怪讨伐状态
+港口 组队 - 加入当前的讨伐队伍
+港口 退出 - 退出当前的讨伐队伍
+港口 物品 <物品ID> - 携带讨伐物品（鱼叉/尾鳍）
+港口 开始战斗 - 开始讨伐（需要全员准备）
+港口 帮助 - 显示此帮助"""
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(help_msg)
+        ]))
+        return
+
+    cmd = args[0]
+    
+    if cmd == '面板':
+        panel_img = create_oversea_panel(game)
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment("image", {
+                "file": f"base64://{str(image_to_base64(panel_img), encoding='utf-8')}"
+            })
+        ]))
+        
+    elif cmd == '组队':
+        info = await get_bot().get_group_member_info(group_id=group, user_id=event.user_id)
+        nickname = info['card'] if (info['card'] != '' and info['card'] is not None) else info['nickname']
+        res = game.join_oversea(player, nickname)
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res['message'])
+        ]))
+        
+    elif cmd == '退出':
+        res = game.leave_oversea(player)
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res['message'])
+        ]))
+        
+    elif cmd == '物品':
+        if len(args) < 2:
+            await port_cmd.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text("请输入物品ID")
+            ]))
+            return
+        res = game.equip_oversea_item(player, args[1])
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res['message'])
+        ]))
+        
+    elif cmd == '开始战斗':
+        res = game.start_oversea_battle()
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text(res['message'])
+        ]))
+        
+    # 管理员指令
+    elif cmd == '刷新' and str(event.user_id) in get_driver().config.superusers:
+        game.spawn_oversea_monster()
+        await port_cmd.send(Message([
+            MessageSegment.reply(event.message_id),
+            MessageSegment.text("已强制刷新港口怪物")
+        ]))
+        
+    elif cmd == '推进' and str(event.user_id) in get_driver().config.superusers:
+        res = game.process_oversea_turn()
+        if res:
+            await port_cmd.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text(f"已强制推进回合: {res['message']}")
+            ]))
+        else:
+            await port_cmd.send(Message([
+                MessageSegment.reply(event.message_id),
+                MessageSegment.text("无法推进回合（可能未开始战斗）")
+            ]))
+
 pot = on_command('大锅', rule=__group_checker)
 
 @pot.handle()
@@ -856,6 +1018,25 @@ async def _(event: Event, message: Message = CommandArg()):
             MessageSegment.text(ret),
             MessageSegment.text('\nUsage：大锅 添加 <物品ID> [数量]')
         ]))
+
+# 签到
+sign_in_cmd = on_command('签到', rule=__group_checker)
+
+@sign_in_cmd.handle()
+async def _(event: Event, message: Message = EventMessage()):
+    if str(message) != '签到':
+        return
+    group = event.group_id
+    if group not in fish_games:
+        fish_games[group] = FishGame(group)
+    game: FishGame = fish_games[group]
+    player = FishPlayer(str(event.user_id))
+    
+    res = game.sign_in(player)
+    await sign_in_cmd.send(Message([
+        MessageSegment.reply(event.message_id),
+        MessageSegment.text(res['message'])
+    ]))
 
 # 天赋面板
 talent_cmd = on_command('天赋', rule=__group_checker)

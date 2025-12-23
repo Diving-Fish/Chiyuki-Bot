@@ -485,12 +485,15 @@ for key in type_tbl:
     if key not in ["Flying", "Rock", "Ghost", "Fire", "Dark"]:
         types_ability_modifier.setdefault(key, {})["Wonder Guard"] = 0
 
-def get_effectiveness_for_pokemon(poke, type, effectiveness=1):
+def get_effectiveness_for_pokemon(poke, type, effectiveness=1, freeze_dry=False):
     attack_type_index = list(type_tbl.keys()).index(type)
     defender_types = poke.get('types', [])
     for poke_type in defender_types:
         poke_type_index = list(type_tbl.keys()).index(poke_type)
-        effectiveness *= type_dmg_tbl[attack_type_index][poke_type_index]
+        if type == 'Ice' and poke_type == 'Water' and freeze_dry:
+            effectiveness *= 2
+        else:
+            effectiveness *= type_dmg_tbl[attack_type_index][poke_type_index]
     result = {
         "default": effectiveness
     }

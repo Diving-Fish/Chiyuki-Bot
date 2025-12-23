@@ -13,78 +13,92 @@
     {
         "id": 2,
         "name": "沙漠亲和力",
-        "desc": "在沙漠主题中捕鱼时，渔力增加",
+        "desc": "捕捉沙漠主题的鱼时，渔力增加",
         "effect": {
-            "power_沙漠": [15, 30, 50]
+            "power_沙漠": [15, 30, 50],
+            "oversea_沙漠": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在沙漠主题中捕鱼时，渔力增加 {power_沙漠}",
+        "detail": "捕捉沙漠主题的鱼时，渔力增加 {power_沙漠}",
+        "detail_oversea": "沙漠鱼叉的性能提升 {oversea_沙漠}%",
         "max_level": 3
     },
     {
         "id": 3,
         "name": "森林亲和力",
-        "desc": "在森林主题中捕鱼时，渔力增加",
+        "desc": "捕捉森林主题的鱼时，渔力增加",
         "effect": {
-            "power_森林": [15, 30, 50]
+            "power_森林": [15, 30, 50],
+            "oversea_森林": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在森林主题中捕鱼时，渔力增加 {power_森林}",
+        "detail": "捕捉森林主题的鱼时，渔力增加 {power_森林}",
+        "detail_oversea": "森林鱼叉的性能提升 {oversea_森林}%",
         "max_level": 3
     },
     {
         "id": 4,
         "name": "火山亲和力",
-        "desc": "在火山主题中捕鱼时，渔力增加",
+        "desc": "捕捉火山主题的鱼时，渔力增加",
         "effect": {
-            "power_火山": [15, 30, 50]
+            "power_火山": [15, 30, 50],
+            "oversea_火山": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在火山主题中捕鱼时，渔力增加 {power_火山}",
+        "detail": "捕捉火山主题的鱼时，渔力增加 {power_火山}",
+        "detail_oversea": "火山鱼叉的性能提升 {oversea_火山}%",
         "max_level": 3
     },
     {
         "id": 5,
         "name": "天空亲和力",
-        "desc": "在天空主题中捕鱼时，渔力增加",
+        "desc": "捕捉天空主题的鱼时，渔力增加",
         "effect": {
-            "power_天空": [15, 30, 50]
+            "power_天空": [15, 30, 50],
+            "oversea_天空": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在天空主题中捕鱼时，渔力增加 {power_天空}",
+        "detail": "捕捉天空主题的鱼时，渔力增加 {power_天空}",
+        "detail_oversea": "天空鱼叉的性能提升 {oversea_天空}%",
         "max_level": 3
     },
     {
         "id": 6,
         "name": "雪山亲和力",
-        "desc": "在雪山主题中捕鱼时，渔力增加",
+        "desc": "捕捉雪山主题的鱼时，渔力增加",
         "effect": {
-            "power_雪山": [15, 30, 50]
+            "power_雪山": [15, 30, 50],
+            "oversea_雪山": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在雪山主题中捕鱼时，渔力增加 {power_雪山}",
+        "detail": "捕捉雪山主题的鱼时，渔力增加 {power_雪山}",
+        "detail_oversea": "雪山鱼叉的性能提升 {oversea_雪山}%",
         "max_level": 3
     },
     {
         "id": 7,
         "name": "金属亲和力",
-        "desc": "在金属主题中捕鱼时，渔力增加",
+        "desc": "捕捉金属主题的鱼时，渔力增加",
         "effect": {
-            "power_金属": [15, 30, 50]
+            "power_金属": [15, 30, 50],
+            "oversea_金属": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在金属主题中捕鱼时，渔力增加 {power_金属}",
+        "detail": "捕捉金属主题的鱼时，渔力增加 {power_金属}",
+        "detail_oversea": "金属鱼叉的性能提升 {oversea_金属}%",
         "max_level": 3
     },
     {
         "id": 8,
         "name": "神秘亲和力",
-        "desc": "在神秘主题中捕鱼时，渔力增加",
+        "desc": "捕捉神秘主题的鱼时，渔力增加",
         "effect": {
-            "power_神秘": [15, 30, 50]
+            "power_神秘": [15, 30, 50],
+            "oversea_神秘": [15, 30, 50]
         },
         "score": 2,
-        "detail": "在神秘主题中捕鱼时，渔力增加 {power_神秘}",
+        "detail": "捕捉神秘主题的鱼时，渔力增加 {power_神秘}",
+        "detail_oversea": "神秘鱼叉的性能提升 {oversea_神秘}%",
         "max_level": 3
     },
     {
@@ -93,10 +107,12 @@
         "desc": "捕鱼失败时，仍可获得少量渔获",
         "effect": {
             "fail_reward": [10, 20, 30],
-            "item_percent": [15, 30, 50]
+            "item_percent": [15, 30, 50],
+            "oversea_damage_reduce": [10, 20, 30]
         },
         "score": 2,
         "detail": "捕鱼失败时，依然可以获得 {fail_reward}% 渔获，且有 {item_percent}% 概率获得道具",
+        "detail_oversea": "港口战斗时，受到的总伤害降低 {oversea_damage_reduce}%，多个失败主义效果不会叠加，取最高效果",
         "max_level": 3
     },
     {
@@ -108,6 +124,7 @@
         },
         "score": 3,
         "detail": "捕鱼时有 {crit_percent}% 概率获得额外渔获",
+        "detail_oversea":"港口战斗时，会心率提升 {crit_percent}%",
         "max_level": 5
     },
     {
@@ -119,6 +136,7 @@
         },
         "score": 4,
         "detail": "触发看破时，获得的渔获量为 {crit_rate}%",
+        "detail_oversea":"港口战斗时，会心伤害变为 {crit_rate}%",
         "max_level": 4
     },
     {
@@ -126,10 +144,12 @@
         "name": "不屈",
         "desc": "捕鱼失败时，可以再次尝试",
         "effect": {
-            "cool_down": [20, 15, 10]
+            "cool_down": [20, 15, 10],
+            "oversea_revive_percent": [10, 25, 50]
         },
         "score": 3,
         "detail": "捕鱼失败时，可以再次尝试，冷却时间 {cool_down} 分钟",
+        "detail_oversea": "港口战斗时，船被击破后，会有一次复活机会，复活后生命值为最大生命值的 {oversea_revive_percent}%。多个不屈效果不会叠加，取最高效果",
         "max_level": 3
     },
     {
@@ -160,10 +180,13 @@
         "desc": "根据捕捉的鱼是否已经记录在图鉴中，获得额外效果",
         "effect": {
             "new_fish_power": [20, 40, 60],
-            "old_fish_crit": [5, 10, 15]
+            "old_fish_crit": [5, 10, 15],
+            "oversea_1st_damage_boost": [5, 10, 15],
+            "oversea_member_damage_reduce": [3, 6, 10]
         },
         "score": 6,
         "detail": "捕捉未记录在图鉴中的鱼时，渔力提升 {new_fish_power}；捕捉已记录在图鉴中的鱼时，有 {old_fish_crit}% 概率获得额外渔获",
+        "detail_oversea": "港口战斗时，如果该玩家配置在 1 号位，则全队伤害提升{oversea_1st_damage_boost}%；否则，受到的伤害降低 {oversea_member_damage_reduce}%，此效果可叠加",
         "max_level": 3
     },
     {
@@ -172,6 +195,67 @@
         "desc": "没有效果，只是意味着这个饰品无法再次升级了。",
         "score": 0,
         "detail": "没有效果，只是意味着这个饰品无法再次升级了。",
+        "max_level": 1
+    },
+    {
+        "id": 17,
+        "name": "强行",
+        "desc": "增加捕鱼的成功率（乘算，不超过 100%）",
+        "effect": {
+            "success_rate": [5, 10, 15, 20, 30],
+            "oversea_damage_boost": [2, 4, 6, 8, 10]
+        },
+        "score": 3,
+        "detail": "增加捕鱼的成功率 {success_rate}%",
+        "detail_oversea": "港口战斗时，总伤害提升 {oversea_damage_boost}%",
+        "max_level": 5
+    },
+    {
+        "id": 18,
+        "name": "再生力",
+        "desc": "非鱼群状态捕鱼时，有概率将这条鱼留下",
+        "effect": {
+            "regenerate_percent": [10, 20, 30],
+            "oversea_heal_percent": [4, 8, 12]
+        },
+        "score": 4,
+        "detail": "非鱼群状态捕鱼时，有 {regenerate_percent}% 概率将这条鱼留下",
+        "detail_oversea": "港口战斗时，每回合结束时回复船体最大生命值的 {oversea_heal_percent}%，多个再生力效果不会叠加，取最高效果",
+        "max_level": 3
+    },
+    {
+        "id": 19,
+        "name": "鱼群专家",
+        "desc": "鱼群时增加渔力",
+        "effect": {
+            "fever_power": [10, 25, 50]
+        },
+        "score": 3,
+        "detail": "鱼群时增加渔力 {fever_power}",
+        "max_level": 3
+    },
+    {
+        "id": 20,
+        "name": "螺旋加速",
+        "desc": "似乎没什么用……",
+        "effect": {
+            "oversea_extra_round": [1, 2, 3]
+        },
+        "score": 0, 
+        "detail": "似乎没什么用……",
+        "detail_oversea": "港口战斗时，额外增加 {oversea_extra_round} 回合战斗时间",
+        "max_level": 3
+    },
+    {
+        "id": 21,
+        "name": "斯卡蒂之触",
+        "desc": "你的属性会心（冰）将对水属性效果绝佳。",
+        "effect": {
+            "oversea_heal_reduce": [50]
+        },
+        "score": 0,
+        "detail": "你的属性会心（冰）将对水属性效果绝佳。",
+        "detail_oversea": "港口战斗时，敌方的治疗效果降低 {oversea_heal_reduce}%，当你使用冰川鱼叉时翻倍。多个斯卡蒂之触效果不会叠加，取最高效果",
         "max_level": 1
     }
 ]

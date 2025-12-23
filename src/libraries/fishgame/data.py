@@ -1,16 +1,46 @@
 import json
+import time
+import random
 import requests
+import hashlib
 from dataclasses import dataclass, field
 from typing import Union, List, Dict
 from src.libraries.pokemon_img import get_effectiveness_for_pokemon, type_tbl
+
+def md5(s):
+    return hashlib.md5(s.encode()).hexdigest()
     
 fish_data: dict[int, 'Fish'] = {}
 fish_item: dict[int, 'FishItem'] = {}
 fish_skills: dict[int, 'FishSkill'] = {}
 weekday_topic = ['', '', '', '', '', '', '']
 
+with open('data/fishgame/fish_data_poke_ver.json', 'r', encoding='utf-8') as f:
+    fish_data_poke_ver = json.load(f)
+
+with open('data/fishgame/gacha.json', 'r', encoding='utf-8') as f:
+    gacha_data = json.load(f)
+
+with open('data/fishgame/fish_talent.json', 'r', encoding='utf-8') as f:
+    talent_data = json.load(f)
+
+# 神秘抽卡与宝玉转换数据
+try:
+    with open('data/fishgame/mystery.json', 'r', encoding='utf-8') as f:
+        _mystery_raw = json.load(f)
+        mystery_gacha_data = _mystery_raw.get('gacha', [])
+        mystery_jewel_table = _mystery_raw.get('jewel', {})  # { source_item_id(str): {target_id(str): weight(float)} }
+except FileNotFoundError:
+    mystery_gacha_data = []
+    mystery_jewel_table = {}
+
 pokedex_showdown = requests.get('https://www.diving-fish.com/api/pokemon-service/pokedex-showdown').json()
 translation_dict = {v: k for k, v in requests.get('https://www.diving-fish.com/api/pokemon-service/translation/pokemon').json().items()}
+
+def buff_available(buff):
+    expire = buff.get('expire', 0)
+    times = buff.get('time', 999)
+    return times > 0 and (expire == 0 or expire > time.time())
 
 def get_weakness(pokemon_name: str) -> List[str]:
     pokemon = pokedex_showdown.get(translation_dict[pokemon_name].lower().replace('-', ''), {})
@@ -19,6 +49,9 @@ def get_weakness(pokemon_name: str) -> List[str]:
         result = get_effectiveness_for_pokemon(pokemon, type)
         if result.get('default', 1) > 1:
             weaknesses.append(type.lower())
+    result = get_effectiveness_for_pokemon(pokemon, 'Ice', freeze_dry=True)
+    if result.get('default', 1) > 1:
+        weaknesses.append('freezedry')
     return weaknesses
 
 
@@ -86,8 +119,8 @@ class FishItem:
     power_modifier: dict = field(default_factory=dict)
     craftby: list = field(default_factory=list)
     craft_score_cost: int = 0
-    # 合成展示所需的神秘商店等级（默认 -1 不限制，判定为 mystic_shop.level >= craft_shop_level）
-    craft_shop_level: int = -1
+    # 购买/合成所需的条件，例如 {"mystic_shop": 1}
+    require: dict = field(default_factory=dict)
     # 配件专用字段
     stackable: bool = True
     id_range: int = 0  # 若为配件，表示可用的最大 id（闭区间）
@@ -96,6 +129,7 @@ class FishItem:
     base_id: int = 0  # 若为实例化 accessory，记录其模板 base id
     batch_use: bool = False  # 是否支持批量使用
     batch_craft: bool = False  # 是否支持批量合成
+    ignore_fever: bool = False  # 是否忽略鱼群状态下带来的影响
 
     def __init__(self, obj: dict):
         self.id = obj['id']
@@ -108,15 +142,24 @@ class FishItem:
         self.power = obj.get('power', 0)
         self.power_modifier = obj.get('power_modifier', {})
         self.craftby = obj.get('craftby', [])
+        if self.craftby and isinstance(self.craftby, dict):
+            temp = []
+            for k, v in self.craftby.items():
+                temp.extend([int(k)] * v)
+            self.craftby = temp
         self.craft_score_cost = obj.get('craft_score_cost', 0)
-        self.craft_shop_level = obj.get('craft_shop_level', -1)
+        self.require = obj.get('require', {})
         self.stackable = obj.get('stackable', True)
         self.id_range = obj.get('id_range', 0)
         self.skill_point = obj.get('skill_point', obj.get('skill_point', 0))  # 兼容
         self.skills = obj.get('skills', [])
+        if not self.skills and 'skill' in obj:
+            for k, v in obj['skill'].items():
+                self.skills.append({'id': int(k), 'level': v})
         self.base_id = obj.get('base_id', self.id)
         self.batch_use = obj.get('batch_use', False)
         self.batch_craft = obj.get('batch_craft', False)
+        self.ignore_fever = obj.get('ignore_fever', False)
     
     @staticmethod
     def get(obj: str) -> 'FishItem':
@@ -145,7 +188,7 @@ class FishItem:
             "power_modifier": self.power_modifier,
             "craftby": self.craftby,
             "craft_score_cost": self.craft_score_cost,
-            "craft_shop_level": self.craft_shop_level,
+            "require": self.require,
             "stackable": self.stackable,
             "id_range": self.id_range,
             "skill_point": self.skill_point,
@@ -182,6 +225,7 @@ class FishSkill:
     score: int
     max_level: int
     detail: str = ''
+    detail_oversea: str = ''
 
     def __init__(self, obj: dict):
         self.id = obj['id']
@@ -191,6 +235,7 @@ class FishSkill:
         self.score = obj.get('score', 0)
         self.max_level = obj.get('max_level', 1)
         self.detail = obj.get('detail', '')
+        self.detail_oversea = obj.get('detail_oversea', '')
 
     @property
     def data(self):
@@ -201,7 +246,8 @@ class FishSkill:
             'effect': self.effect,
             'score': self.score,
             'max_level': self.max_level,
-            'detail': self.detail
+            'detail': self.detail,
+            'detail_oversea': self.detail_oversea
         }
     
     def get_detail_for_level(self, level: int):
@@ -314,11 +360,7 @@ class Equipment:
     
     @property
     def exp_bonus(self) -> float:
-        ret = 0
-        for item in self.items:
-            if item is not None and item.id == 402:
-                ret += 0.1
-        return ret
+        return 0
 
     @property
     def gold_bonus(self) -> float:
@@ -416,6 +458,10 @@ class FishLog:
     
     def caught(self, fish_id: int):
         return fish_id in self.__data
+    
+    @property
+    def caught_set(self):
+        return set(self.__data)
 
     # def __setitem__(self, index, value):
     #     self.__data[index] = value

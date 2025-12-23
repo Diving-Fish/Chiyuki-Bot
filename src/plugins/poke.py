@@ -105,7 +105,7 @@ nve = on_command('进攻盲点')
 async def _(event: Event, message: Message = CommandArg()):
     args = str(message).strip().split()
     if str(message).strip() == '帮助':
-        await nve.send("进攻盲点格式为：\n进攻盲点 [属性] [属性] ...\n以 . 头的宝可梦属性名表示非本系，从第四个属性开始也认为是非本系\n例如：\n进攻盲点 电 .冰 .岩石")
+        await nve.send("进攻盲点格式为：\n进攻盲点 [属性] [属性] ...\n以 . 头的宝可梦属性名表示非本系，从第四个属性开始也认为是非本系，如强制视为本系请以 * 开头\n例如：\n进攻盲点 电 .冰 .岩石")
         return
     if len(args) == 0:
         await nve.send("请输入至少一个属性")
@@ -118,6 +118,9 @@ async def _(event: Event, message: Message = CommandArg()):
         if key.startswith('.') or key.startswith('。'):
             key = key[1:]
             stab = False
+        if key.startswith('*'):
+            key = key[1:]
+            stab = True
         if key in types_cn:
             args_type.append((types[types_cn.index(key)], 1.5 if stab else 1))
         elif key in types:
