@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fishing Game</title>
+  <link href="https://www.diving-fish.com/local/vuetify@3.9.2/dist/vuetify.min.css" rel="stylesheet">
+	<link href="https://cdn.bootcdn.net/ajax/libs/MaterialDesign-Webfont/7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+  <script src="https://www.diving-fish.com/local/vue@3.5.18/dist/vue.global.js"></script>
+  <script src="https://www.diving-fish.com/local/vuetify@3.9.2/dist/vuetify.min.js"></script>
+  <script src="https://www.diving-fish.com/local/axios/axios.min.js"></script>
+  <style>
+    body { font-family: Noto Sans SC, sans-serif; margin:0; }
+    .app-shell { display:flex; height:100vh; }
+    .stage { flex:1; padding:16px; background:linear-gradient(#0b2b3a,#07141a); color:#fff; display:flex; flex-direction:column; gap:12px; }
+      .stage-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+      .stage-header-meta { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+    .stage-label { font-size:0.75rem; letter-spacing:0.25em; text-transform:uppercase; color:#7ed6ff; margin:0 0 4px; }
+    .stage-meta { font-size:0.85rem; color:#aad3f0; margin:0; max-width:280px; }
+    .side { width:360px; border-left:1px solid rgba(255,255,255,0.04); padding:12px; background:#031320; color:#e6f7ff; display:flex; flex-direction:column; }
+    .side-header { flex-shrink:0; }
+    .side-panel { flex:1; overflow-y:auto; margin-top:16px; padding-bottom:16px; }
+    .log { flex:1; overflow:auto; background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); font-size:0.9rem; line-height:1.45; }
+    .chat-input-bar { margin-top:8px; }
+    .mobile-side-toggle { align-self:flex-end; }
+    .side-backdrop { position:fixed; top:0; left:0; bottom:0; right:min(320px,85vw); background:rgba(0,0,0,0.55); z-index:8; }
+    .side--mobile { position:fixed; top:0; right:0; bottom:0; z-index:10; transform:translateX(100%); transition:transform .3s ease; max-width:85vw; width:320px; box-shadow:-8px 0 24px rgba(0,0,0,0.4); pointer-events:none; }
+    .side--mobile.side--mobile-open { transform:translateX(0); pointer-events:auto; }
+    .side-close-bar { display:none; }
+    @media (max-width:960px) {
+      .app-shell { flex-direction:column; }
+      .stage { padding-bottom:64px; }
+      .status-dock { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+      .side { border-left:none; }
+      .side-close-bar { display:flex; justify-content:flex-end; }
+      .log { min-height: calc(100vh - 500px); max-height: calc(100vh - 500px); }
+    }
+    .chat-input-bar { margin-top:8px; }
+    .stage-stream { flex:1; display:flex; flex-direction:column; gap:12px; min-height:0; }
+    .status-dock { display:grid; grid-template-columns:2fr 1.1fr 2.2fr; gap:12px; }
+    @media (max-width:1280px) { .status-dock { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); } }
+    .status-card { background:rgba(5,24,35,0.85); border:1px solid rgba(126,214,255,0.12); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; min-height:220px; position:relative; }
+    .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .eyebrow { font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:#7ed6ff; margin:0; margin-top: 12px; }
+    .pill { padding:2px 8px; border-radius:999px; font-size:0.7rem; text-transform:uppercase; border:1px solid rgba(255,255,255,0.2); }
+    .pill--fever { background:rgba(255,99,132,0.25); border-color:rgba(255,99,132,0.6); color:#ffcdd2; }
+    .pool-summary { font-size:0.9rem; color:#d6f0ff; margin:0; cursor:help; }
+    .pool-tooltip { max-width:320px; font-size:0.8rem; line-height:1.4; color:#0d47a1; }
+    .pool-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; font-size:0.8rem; }
+    .pool-meta strong { display:block; font-size:1rem; color:#fff; }
+    .meta-label { font-size:0.7rem; color:#8fb6cc; text-transform:uppercase; letter-spacing:0.08em;display: block; }
+    .chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+    .meta-chip { background:rgba(126,214,255,0.15); color:#c6f2ff; padding:4px 8px; border-radius:999px; font-size:0.75rem; border:1px solid rgba(126,214,255,0.3); }
+    .meta-chip small { opacity:0.7; margin-left:4px; }
+    .meta-chip--glow { background:rgba(255,214,126,0.15); border-color:rgba(255,214,126,0.4); color:#ffe3b2; }
+    .pool-footer { font-size:0.8rem; color:#9bd5ff; margin:0; }
+    .pool-footer-actions { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+    .pool-footer-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    .status-placeholder { display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#9db6c4; }
+    .pot-card { background:rgba(15,38,52,0.85); }
+    .pot-desc { font-size:0.8rem; color:#9db6c4; margin:0; min-height:40px; }
+    .pot-progress { position:relative; background:rgba(255,255,255,0.08); border-radius:999px; height:12px; overflow:hidden; }
+    .pot-progress__fill { position:absolute; top:0; left:0; bottom:0; background:linear-gradient(90deg,#7dd3fc,#38bdf8); transition:width .3s; }
+    .pot-progress span { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.75rem; color:#05263e; font-weight:600; }
+    .pot-stats { list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:10px; font-size:0.8rem; color:#cddff0; }
+    .pot-form { display:flex; flex-direction:column; gap:8px; }
+    .buildings-card { background:rgba(12,19,32,0.85); }
+    .building-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    @media (max-width:1440px) { .building-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:960px) { .building-grid { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); } }
+    .building-tile { padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); cursor:pointer; transition:border-color .2s, transform .2s; }
+    .building-tile:hover { border-color:rgba(126,214,255,0.5); transform:translateY(-2px); }
+    .building-tile.is-active { border-color:#82b1ff; background:rgba(130,177,255,0.15); }
+    .building-tile.is-ready { border-color:#4ade80; }
+    .building-tile.is-max { border-color:#ffd166; }
+    .tile-head { display:flex; justify-content:space-between; font-size:0.85rem; color:#fff; }
+    .tile-effect { font-size:0.75rem; color:#9db6c4; margin:6px 0 0; }
+    .tile-next { font-size:0.7rem; color:#bfe7ff; margin:4px 0 0; }
+    .building-detail { border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; flex-direction:column; gap:10px; }
+    .building-description { font-size:0.8rem; color:#9db6c4; margin:0; }
+    .building-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .building-materials ul,
+    .building-prereq ul { list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
+    .building-materials li,
+    .building-prereq li { display:flex; justify-content:space-between; }
+    .text-ready { color:#7fffd4; }
+    .cooldown-tag { font-size:0.75rem; color:#ffbca2; }
+    .building-actions { display:flex; flex-direction:column; gap:8px; }
+    .action-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    .text-medium-emphasis { color:rgba(255,255,255,0.6); }
+    .panel-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; }
+    .stat-card { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .stat-block { text-align:center; padding:6px 4px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); }
+    .stat-label { font-size:0.75rem; color:#8fb6cc; margin:0; }
+    .stat-value { font-size:1.1rem; font-weight:600; margin:2px 0 0; }
+    .exp-track { width:100%; height:6px; border-radius:999px; background:rgba(255,255,255,0.05); overflow:hidden; }
+    .exp-fill { height:100%; background:#4ade80; transition:width .3s ease; }
+    .exp-meta { display:flex; justify-content:space-between; font-size:0.8rem; color:#9bd5ff; margin-bottom:6px; }
+    .power-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .power-tile { padding:8px; border-radius:8px; background:rgba(68,146,220,0.12); border:1px solid rgba(68,146,220,0.3); }
+    .power-label { font-size:0.75rem; color:#9ac9fa; margin:0; }
+    .power-value { font-size:1.2rem; font-weight:600; margin:4px 0 0; }
+    .equipment-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+    .equipment-card { padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.01); }
+    .equipment-label { font-size:0.75rem; letter-spacing:0.08em; color:#8fb6cc; margin:0 0 4px; text-transform:uppercase; }
+    .equipment-name { font-size:1rem; margin:0; font-weight:600; }
+    .equipment-meta { font-size:0.75rem; color:#a5b4c3; margin:2px 0 0; }
+    .equipment-hint { font-size:0.7rem; color:#6f7e8a; margin:4px 0 0; }
+    .skill-list h5, .buff-list h5 { margin:0 0 8px; font-weight:600; letter-spacing:0.08em; color:#9bd5ff; font-size:0.85rem; }
+    .skill-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); font-size:0.8rem; margin:0 6px 6px 0; cursor:default; }
+    .buff-chip { padding:6px 10px; border-radius:8px; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.4); margin-bottom:6px; font-size:0.8rem; }
+    .buff-chip small { display:block; color:#8fe0a8; margin-top:2px; font-size:0.7rem; }
+    .role-panel { display:flex; flex-direction:column; gap:10px; }
+    .item-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:12px; }
+    .item-card { position:relative; padding:12px; border-radius:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); min-height:108px; display:flex; flex-direction:column; gap:8px; transition:background 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.25s; }
+    .item-card:hover { background:rgba(126,214,255,0.12); border-color:rgba(126,214,255,0.5); box-shadow:0 12px 24px rgba(0,0,0,0.35); transform:translateY(-2px); }
+    .item-card--shop { background:rgba(20,68,94,0.35); }
+    .item-card--bag { background:rgba(48,35,78,0.35); }
+    .item-top { display:flex; flex-direction:column; gap:4px; }
+    .item-name { font-size:0.95rem; font-weight:600; margin:0; }
+    .item-subline { display:flex; flex-wrap:wrap; gap:6px; font-size:0.75rem; color:#8fb6cc; }
+    .item-type { letter-spacing:0.08em; text-transform:uppercase; }
+    .item-hint { font-size:0.75rem; color:#9bd5ff; }
+    .item-bottom { margin-top:auto; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .item-price { font-size:0.9rem; font-weight:600; color:#ffd89c; }
+    .item-count { font-size:0.9rem; font-weight:600; color:#f6cf94; }
+    .item-actions { display:flex; justify-content:flex-end; gap:6px; }
+    .item-tooltip { max-width:240px; font-size:0.8rem; line-height:1.4; color:var(--v-theme-blue-darken-4,#0d47a1); }
+    .item-tooltip strong { color:var(--v-theme-blue-darken-2,#1565c0); }
+    .tooltip-label { font-size:0.75rem; color:var(--v-theme-blue-darken-1,#1976d2); letter-spacing:0.08em; margin-top:8px; text-transform:uppercase; }
+    .tooltip-skill { padding:6px 0; border-top:1px solid rgba(255,255,255,0.08); }
+    .tooltip-skill:first-of-type { border-top:none; padding-top:0; }
+    .tooltip-skill-head { display:flex; justify-content:space-between; font-size:0.8rem; color:var(--v-theme-blue-darken-2,#1565c0); }
+    .tooltip-skill-body { margin:4px 0 0; font-size:0.75rem; line-height:1.4; color:var(--v-theme-blue-darken-4,#0d47a1); }
+    .skill-chip__level { color:#f6cf94; font-weight:600; }
+    .rarity-1 { color:#f8fafc; }
+    .rarity-2 { color:#7ed6ff; }
+    .rarity-3 { color:#f48fb1; }
+    .rarity-4 { color:#ffe082; }
+    .rarity-5 { color:#ff8a80; }
+    .side-actions { margin-top:8px; display:flex; gap:10px; flex-wrap:wrap; justify-content: space-between; }
+    .draw-result-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+    .draw-result-card { border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px; background:rgba(5,24,35,0.6); }
+    .draw-result-card p { margin:2px 0; font-size:0.85rem; }
+    .craft-section { margin-top:28px; }
+    .craft-header { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+    .craft-panels { background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.08); }
+    .craft-materials, .craft-prereq, .craft-requirements { margin-top:12px; font-size:0.85rem; }
+    .craft-list { list-style:none; padding:0; margin:8px 0 0; display:flex; flex-direction:column; gap:6px; }
+    .craft-list li { display:flex; justify-content:space-between; align-items:center; }
+    .craft-meta { font-size:0.78rem; color:#8fb6cc; margin-top:6px; }
+    .draw-options { display:flex; flex-wrap:wrap; gap:8px; }
+    .draw-option-btn { text-transform:none; }
+    .port-entry { margin-top:8px; }
+    .port-entry .v-btn { width:100%; }
+    .port-dialog-card { background:rgba(6,20,32,0.95); }
+    .port-section { margin-bottom:20px; }
+    .port-meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+    .port-buff-chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .port-item-chip { padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); min-width:180px; }
+    .port-item-chip strong { display:block; font-size:0.9rem; }
+    .port-logs { max-height:220px; overflow:auto; border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px; background:rgba(255,255,255,0.02); }
+    .port-logs p { margin:0 0 6px; font-size:0.82rem; }
+    .port-team-table { font-size:0.85rem; border-collapse:collapse; width:100%; }
+    .port-team-table th,
+    .port-team-table td { border-bottom:1px solid rgba(255,255,255,0.08); padding:6px 8px; text-align:left; }
+
+    .alert-fixed-height {
+      height: auto !important;
+      min-height: 40px !important; /* 给一个合适的最小高度 */
+      max-height: 80px !important; /* 限制最高高度 */
+      overflow: hidden;
+    }
+
+    /* 2. 修复内部容器，确保图标和文字垂直居中，不产生多余高度 */
+    .alert-fixed-height .v-alert__wrapper {
+      height: 100% !important;
+      align-items: center !important;
+      padding-top: 4px !important;
+      padding-bottom: 4px !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <v-app theme="dark">
+        <div class="app-shell">
+          <div class="stage">
+          <div class="stage-header">
+            <div>
+              <p class="stage-label">Realtime Feed</p>
+              <h2 style="margin:0">捕鱼事件广播</h2>
+            </div>
+              <div class="stage-header-meta">
+                <p class="stage-meta">
+                  显示当前群内的刷鱼、捕获、港口及 Fever 状态变更，保持与机器人同步。
+                </p>
+                <v-btn
+                  v-if="isMobile"
+                  size="small"
+                  variant="outlined"
+                  color="cyan-lighten-2"
+                  class="mobile-side-toggle"
+                  @click="openSidePanel"
+                >查看属性</v-btn>
+              </div>
+          </div>
+          <v-alert
+            v-if="alertBanner.visible"
+            :type="alertBanner.type"
+            variant="tonal"
+            closable
+            density="compact" 
+            class="flex-grow-0 flex-shrink-0 alert-fixed-height"
+            @click:close="dismissAlert"
+          ><div class="d-flex align-center">{{ alertBanner.text }}</div></v-alert>
+
+          <div class="stage-stream">
+            <div class="log" ref="log">
+              <div v-if="messages.length === 0" class="text-medium-emphasis">暂无事件，等待广播...</div>
+              <div v-for="(m,i) in messages" :key="i">{{ m }}</div>
+            </div>
+            <div class="chat-input-bar" v-if="credentials.game && credentials.user">
+              <v-text-field
+                v-model="chatInput"
+                density="compact"
+                variant="outlined"
+                autocomplete="off"
+                hide-details
+                placeholder="输入聊天内容，按回车发送"
+                @keydown.enter.prevent="sendChat"
+                >
+                  <template #append-inner>
+                    <v-btn
+                      size="small"
+                      variant="flat"
+                      color="cyan-lighten-2"
+                      :disabled="!chatInput || !chatInput.trim()"
+                      @click="sendChat"
+                    >发送</v-btn>
+                  </template>
+                </v-text-field>
+            </div>
+            <div class="status-dock">
+              <section class="status-card pool-card">
+                <div class="card-head">
+                  <div>
+                    <p class="eyebrow">池子状态</p>
+                    <h4 style="margin:4px 0">{{ gameDashboard.pool && gameDashboard.pool.currentFish ? gameDashboard.pool.currentFish.name : '当前池子' }}</h4>
+                  </div>
+                  <span class="pill" :class="{ 'pill--fever': gameDashboard.pool && gameDashboard.pool.isFever }">
+                    {{ gameDashboard.pool && gameDashboard.pool.isFever ? 'Fever' : '常规' }}
+                  </span>
+                </div>
+                <v-tooltip v-if="gameDashboard.pool" location="bottom">
+                  <template #activator="{ props }">
+                    <p class="pool-summary" v-bind="props">{{ gameDashboard.pool.summary }}</p>
+                  </template>
+                  <div class="pool-tooltip">
+                    <p v-for="line in gameDashboard.pool.detail.split('\n')">{{ line }}</p></div>
+                </v-tooltip>
+                <div class="status-placeholder" v-else>
+                  <template v-if="credentials.game && credentials.user">
+                    <v-progress-circular indeterminate size="20" color="cyan-lighten-2"></v-progress-circular>
+                    <span>加载池子信息...</span>
+                  </template>
+                  <span v-else>请在 URL 中添加 ?game=群号&amp;user=QQ 以加载池子数据</span>
+                </div>
+                <div class="pool-meta" v-if="gameDashboard.pool">
+                  <div>
+                    <span class="meta-label">平均渔力</span>
+                    <strong>{{ Number(gameDashboard.pool.averagePower || 0).toFixed(1) }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">鱼群剩余</span>
+                    <strong>{{ formatDuration(gameDashboard.pool.isFever ? gameDashboard.pool.feverRemaining : 0) }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">鱼记录</span>
+                    <strong>{{ gameDashboard.pool.fishLogCount }}</strong>
+                  </div>
+                </div>
+                <div class="chip-row" v-if="gameDashboard.pool && gameDashboard.pool.rarityBuffs && gameDashboard.pool.rarityBuffs.length">
+                  <span class="meta-chip" v-for="buff in gameDashboard.pool.rarityBuffs" :key="buff.rarity">
+                    {{ buff.rarity }} +{{ buff.bonus }}%
+                    <small v-if="buff.remaining">{{ formatDuration(buff.remaining) }}</small>
+                  </span>
+                </div>
+                <div class="chip-row" v-if="gameDashboard.pool && gameDashboard.pool.glowBuffs && gameDashboard.pool.glowBuffs.length">
+                  <span class="meta-chip meta-chip--glow" v-for="glow in gameDashboard.pool.glowBuffs" :key="glow.label">
+                    {{ glow.label }} {{ formatDuration(glow.remaining) }}
+                  </span>
+                </div>
+                <div class="pool-footer-actions" v-if="credentials.game && credentials.user">
+                  <div class="pool-footer-buttons">
+                    <v-btn
+                      color="cyan-lighten-2"
+                      variant="flat"
+                      size="small"
+                      :disabled="!canCatch"
+                      :loading="catching"
+                      @click="catchFish(false)"
+                    >
+                      立即捕鱼
+                    </v-btn>
+                    <v-btn
+                      color="pink-lighten-2"
+                      variant="tonal"
+                      size="small"
+                      :disabled="!canCatch"
+                      :loading="catching"
+                      @click="catchFish(true)"
+                    >
+                      大师球尝试
+                    </v-btn>
+                  </div>
+                  <p class="pool-footer" v-if="gameDashboard.pool && gameDashboard.pool.currentFish">
+                    当前：{{ gameDashboard.pool.currentFish.name }}【{{ gameDashboard.pool.currentFish.rarity }}】
+                  </p>
+                  <p class="pool-footer" v-else>
+                    等待下一次刷鱼...
+                  </p>
+                  <div v-if="hasPortAccess" class="port-entry">
+                    <v-btn
+                      variant="outlined"
+                      color="amber-accent-2"
+                      size="small"
+                      @click="openPortDialog"
+                    >港口讨伐</v-btn>
+                  </div>
+                </div>
+                <p class="pool-footer" v-else>
+                  在 URL 中添加 ?game=群号&amp;user=QQ 可启用捕鱼功能
+                </p>
+              </section>
+
+              <section class="status-card pot-card">
+                <div class="card-head">
+                  <div>
+                    <p class="eyebrow">大锅</p>
+                    <h4 style="margin:4px 0">Lv.{{ gameDashboard.pot ? gameDashboard.pot.level : 0 }}</h4>
+                  </div>
+                  <span class="pill">
+                    {{ gameDashboard.pot ? ('渔力 +' + (gameDashboard.pot.powerBoost || 0)) : '未激活' }}
+                  </span>
+                </div>
+                <div v-if="gameDashboard.pot">
+                  <p class="pot-desc">{{ gameDashboard.pot.description }}</p>
+                  <div class="pot-progress">
+                    <div class="pot-progress__fill" :style="{ width: potProgress + '%' }"></div>
+                    <span>{{ gameDashboard.pot.current }} / {{ gameDashboard.pot.capacity }}</span>
+                  </div>
+                  <ul class="pot-stats">
+                    <li>燃料消耗：{{ gameDashboard.pot.consumeSpeed }}/分钟</li>
+                    <li>平均渔力 +{{ gameDashboard.pot.averagePowerBoost }}</li>
+                    <li>渔力 +{{ gameDashboard.pot.powerBoost }}</li>
+                  </ul>
+                  <div class="pot-form mt-4">
+                    <v-select
+                      v-model="potForm.itemId"
+                      :items="bagSelectOptions"
+                      item-title="label"
+                      item-value="value"
+                      label="选择背包道具"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      :disabled="!bagSelectOptions.length"
+                    ></v-select>
+                    <v-text-field
+                      v-model.number="potForm.count"
+                      type="number"
+                      min="1"
+                      label="投入数量"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                    ></v-text-field>
+                    <v-btn
+                      color="cyan-lighten-2"
+                      variant="flat"
+                      :disabled="!potForm.itemId || potForm.count <= 0"
+                      @click="handlePotAdd"
+                    >
+                      投入燃料
+                    </v-btn>
+                  </div>
+                </div>
+                <div class="status-placeholder" v-else>
+                  <span>加载大锅信息...</span>
+                </div>
+              </section>
+
+              <section class="status-card buildings-card">
+                <div class="card-head">
+                  <div>
+                    <p class="eyebrow">建筑网格</p>
+                    <h4 style="margin:4px 0">设施管理</h4>
+                  </div>
+                  <span class="pill">{{ (gameDashboard.buildings && gameDashboard.buildings.length) || 0 }}/9</span>
+                </div>
+                <div class="building-grid" v-if="gameDashboard.buildings && gameDashboard.buildings.length">
+                  <div
+                    v-for="building in gameDashboard.buildings"
+                    :key="building.key"
+                    class="building-tile"
+                    :class="{
+                      'is-active': building.key === selectedBuildingKey,
+                      'is-ready': building.canUpgrade,
+                      'is-max': building.level >= building.maxLevel
+                    }"
+                    @click="openBuildingDialog(building.key)"
+                  >
+                    <div class="tile-head">
+                      <strong>{{ building.name }}</strong>
+                      <span>Lv.{{ building.level }}/{{ building.maxLevel }}</span>
+                    </div>
+                    <!-- <p class="tile-effect">{{ building.currentEffect }}</p>
+                    <p class="tile-next" v-if="building.nextEffect">下一阶：{{ building.nextEffect }}</p> -->
+                  </div>
+                </div>
+                <div class="status-placeholder" v-else>
+                  <span>暂无建筑数据</span>
+                </div>
+                <p class="pool-footer">点击任意建筑查看更多详情与操作</p>
+              </section>
+            </div>
+          </div>
+        </div>
+
+          <div
+            class="side"
+            :class="{ 'side--mobile': isMobile, 'side--mobile-open': sideDrawer }"
+            v-show="!isMobile || sideDrawer"
+          >
+            <div class="side-close-bar" v-if="isMobile">
+              <v-btn icon="mdi-close" variant="text" @click="closeSidePanel"></v-btn>
+            </div>
+          <div class="side-header">
+            <h3>{{ player.name }}</h3>
+            <div>
+              <div v-if="!credentials.game || !credentials.user">
+                <p>请在 URL 中添加查询参数 ?game=群号&amp;user=QQ</p>
+              </div>
+              <div v-else>
+                <v-row>
+                  <v-col :cols="8">
+                    <p>群：<strong>{{ credentials.game }}</strong></p>
+                    <p>QQ：<strong>{{ credentials.user }}</strong></p>
+                  </v-col>
+                  <v-col :cols="4">
+                    <v-btn icon="mdi-pencil" size="small" variant="text" @click="changeNickname"></v-btn>
+                    <v-btn icon="mdi-refresh" size="small" variant="text" @click="refreshPlayer"></v-btn>
+                  </v-col>
+                </v-row>
+                <div class="side-actions">
+                  <div style="display: flex; gap: 10px">
+                    <v-btn
+                      size="small"
+                      color="cyan-lighten-2"
+                      variant="flat"
+                      @click="openDrawDialog('standard')"
+                    >抽取</v-btn>
+                    <v-btn
+                      size="small"
+                      color="deep-purple-lighten-2"
+                      variant="tonal"
+                      @click="openDrawDialog('mystery')"
+                    >神秘抽取</v-btn>
+                  </div>
+                  <v-btn
+                    size="small"
+                    color="amber-accent-2"
+                    variant="outlined"
+                    :loading="signingIn"
+                    :disabled="signingIn"
+                    @click="handleSignIn"
+                  >签到</v-btn>
+                </div>
+              </div>
+            </div>
+            <div class="side-backdrop" v-if="isMobile && sideDrawer" @click="closeSidePanel"></div>
+          </div>
+
+          <v-tabs v-model="activeTab" grow class="flex-grow-0">
+            <v-tab value="shop">商店</v-tab>
+            <v-tab value="bag">背包</v-tab>
+            <v-tab value="role">角色</v-tab>
+          </v-tabs>
+          <div class="side-panel">
+            <v-window v-model="activeTab" class="mt-4">
+              <v-window-item value="shop">
+                <div>
+                  <h4>商店</h4>
+                  <div v-if="sortedShopItems.length===0">加载中...</div>
+                  <div v-else class="item-grid">
+                    <v-tooltip
+                      v-for="it in sortedShopItems"
+                      :key="it.id"
+                      location="top"
+                    >
+                      <template #activator="{ props }">
+                        <div class="item-card item-card--shop" v-bind="props">
+                          <div class="item-top">
+                            <p class="item-name" :class="rarityClass(it.rarity)">{{ it.name }}</p>
+                            <div class="item-subline" v-if="it.type || it.power">
+                              <span class="item-type" v-if="it.type">{{ formatItemType(it.type) }}</span>
+                              <span class="item-hint" v-if="it.power">渔力 {{ it.power }}</span>
+                            </div>
+                          </div>
+                          <div class="item-bottom">
+                            <span class="item-price">¥{{ it.price }}</span>
+                            <div class="item-actions">
+                              <v-btn
+                                size="x-small"
+                                variant="flat"
+                                color="cyan-lighten-2"
+                                @click.stop="buyItem(it)"
+                              >购买</v-btn>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                      <div class="item-tooltip">
+                        <p><strong>ID</strong>：{{ it.id }}</p>
+                        <p>{{ it.description || '暂无描述' }}</p>
+                        <p v-if="it.power">渔力：{{ it.power }}</p>
+                        <p v-if="it.type">类型：{{ formatItemType(it.type) }}</p>
+                        <div v-if="getSkillDetails(it.skills).length">
+                          <p class="tooltip-label">附带技能</p>
+                          <div class="tooltip-skill" v-for="skill in getSkillDetails(it.skills)" :key="skill.key">
+                            <div class="tooltip-skill-head">
+                              <strong>{{ skill.name }}</strong>
+                              <span>Lv.{{ skill.level }}</span>
+                            </div>
+                            <p class="tooltip-skill-body">{{ skill.detail || '暂无效果描述' }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </div>
+                  <div class="craft-section">
+                    <div class="craft-header">
+                      <div>
+                        <p class="eyebrow" style="margin-bottom:4px">合成工坊</p>
+                        <p class="item-subline">使用材料合成进阶道具</p>
+                      </div>
+                      <v-btn
+                        icon="mdi-refresh"
+                        size="small"
+                        variant="text"
+                        :loading="craftLoading"
+                        @click="refreshCraftables()"
+                      ></v-btn>
+                    </div>
+                    <div v-if="craftLoading" class="text-medium-emphasis">合成配方加载中...</div>
+                    <div v-else-if="!craftableItems.length" class="text-medium-emphasis">暂无符合条件的合成配方</div>
+                    <v-expansion-panels v-else class="craft-panels" multiple v-model="craftExpanded">
+                      <v-expansion-panel v-for="item in craftableItems" :key="item.id" :value="item.id">
+                        <v-expansion-panel-title>
+                          <div>
+                            <p class="item-name" :class="rarityClass(item.rarity)">[{{ item.id }}] {{ item.name }}</p>
+                            <p class="item-subline">{{ item.description || '暂无描述' }}</p>
+                          </div>
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <div class="craft-materials">
+                            <p class="eyebrow">所需材料</p>
+                            <ul class="craft-list">
+                              <li v-for="mat in item.materials" :key="mat.id">
+                                <span :class="rarityClass(mat.rarity)">{{ mat.name }} ×{{ mat.needed }}</span>
+                                <span :class="{ 'text-ready': mat.owned >= mat.needed }">{{ mat.owned }} / {{ mat.needed }}</span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div class="craft-prereq" v-if="item.prerequisiteItem">
+                            <p class="eyebrow">前置装备</p>
+                            <p :class="rarityClass(item.prerequisiteItem.rarity)">需要 {{ item.prerequisiteItem.name }}</p>
+                          </div>
+                          <div class="craft-requirements" v-if="item.requires && item.requires.length">
+                            <p class="eyebrow">建筑需求</p>
+                            <ul class="craft-list">
+                              <li v-for="req in item.requires" :key="req.key">
+                                <span>{{ req.label }}</span>
+                                <span :class="{ 'text-ready': req.met }">Lv.{{ req.currentLevel }}/{{ req.requiredLevel }}</span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div class="craft-meta" v-if="item.craftScoreCost">积分消耗：{{ item.craftScoreCost }}</div>
+                          <div class="craft-actions mt-4 d-flex justify-end">
+                            <v-btn
+                              color="cyan-lighten-2"
+                              :loading="craftingId === item.id"
+                              @click="craftItem(item.id)"
+                            >合成</v-btn>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </div>
+                </div>
+              </v-window-item>
+
+              <v-window-item value="bag">
+                <div>
+                  <h4>背包</h4>
+                  <div v-if="sortedBagItems.length===0" class="text-medium-emphasis">背包为空</div>
+                  <div v-else class="item-grid">
+                    <v-tooltip
+                      v-for="(entry, idx) in sortedBagItems"
+                      :key="entry.resolvedId || idx"
+                      location="top"
+                    >
+                      <template #activator="{ props }">
+                        <div class="item-card item-card--bag" v-bind="props">
+                          <div class="item-top">
+                            <p class="item-name" :class="rarityClass(entry.resolvedItem.rarity)">{{ entry.resolvedItem.name || '未知物品' }}</p>
+                            <div class="item-subline" v-if="entry.resolvedItem.type || entry.resolvedItem.power">
+                              <span class="item-type" v-if="entry.resolvedItem.type">{{ formatItemType(entry.resolvedItem.type) }}</span>
+                              <span class="item-hint" v-if="entry.resolvedItem.power">渔力 {{ entry.resolvedItem.power }}</span>
+                            </div>
+                          </div>
+                          <div class="item-bottom">
+                            <span class="item-count">×{{ entry.count }}</span>
+                            <div class="item-actions">
+                              <v-btn
+                                size="x-small"
+                                variant="tonal"
+                                color="deep-purple-lighten-3"
+                                :disabled="!entry.resolvedItem.id"
+                                @click.stop="useItem(entry.resolvedItem.id)"
+                              >使用</v-btn>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                      <div class="item-tooltip">
+                        <p><strong>ID</strong>：{{ entry.resolvedItem.id || '未知' }}</p>
+                        <p>{{ entry.resolvedItem.description || '暂无描述' }}</p>
+                        <p v-if="entry.resolvedItem.power">渔力：{{ entry.resolvedItem.power }}</p>
+                        <p v-if="entry.resolvedItem.type">类型：{{ formatItemType(entry.resolvedItem.type) }}</p>
+                        <div v-if="getSkillDetails(entry.resolvedItem.skills).length">
+                          <p class="tooltip-label">附带技能</p>
+                          <div class="tooltip-skill" v-for="skill in getSkillDetails(entry.resolvedItem.skills)" :key="skill.key">
+                            <div class="tooltip-skill-head">
+                              <strong>{{ skill.name }}</strong>
+                              <span>Lv.{{ skill.level }}</span>
+                            </div>
+                            <p class="tooltip-skill-body">{{ skill.detail || '暂无效果描述' }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </div>
+                </div>
+              </v-window-item>
+
+              <v-window-item value="role">
+                <div class="role-panel">
+                  <section class="panel-card stat-card">
+                    <div class="stat-block">
+                      <p class="stat-label">等级</p>
+                      <p class="stat-value">Lv.{{ player.level }}</p>
+                    </div>
+                    <div class="stat-block">
+                      <p class="stat-label">金币</p>
+                      <p class="stat-value">{{ player.gold }}</p>
+                    </div>
+                    <div class="stat-block">
+                      <p class="stat-label">积分</p>
+                      <p class="stat-value">{{ player.score }}</p>
+                    </div>
+                  </section>
+
+                  <section class="panel-card">
+                    <div class="exp-meta">
+                      <span>经验 {{ player.exp }} / {{ player.nextExp }}</span>
+                      <span>{{ expPercent }}%</span>
+                    </div>
+                    <div class="exp-track">
+                      <div class="exp-fill" :style="{ width: expPercent + '%' }"></div>
+                    </div>
+                  </section>
+
+                  <section class="panel-card power-grid">
+                    <div class="power-tile">
+                      <p class="power-label">常规渔力</p>
+                      <p class="power-value">{{ player.power }}</p>
+                    </div>
+                    <div class="power-tile">
+                      <p class="power-label">鱼群渔力</p>
+                      <p class="power-value">{{ player.feverPower }}</p>
+                    </div>
+                    <div class="power-tile">
+                      <p class="power-label">图鉴收集</p>
+                      <p class="power-value">{{ player.fishCount }}</p>
+                    </div>
+                    <div class="power-tile">
+                      <p class="power-label">技能数量</p>
+                      <p class="power-value">{{ player.skills.length }}</p>
+                    </div>
+                  </section>
+
+                  <section class="panel-card equipment-grid">
+                    <div class="equipment-card" v-for="slot in equipmentSlots" :key="slot.key">
+                      <p class="equipment-label">{{ slot.label }}</p>
+                      <p class="equipment-name">{{ slot.item?.name || '未装备' }}</p>
+                      <p class="equipment-meta" v-if="slot.item">ID {{ slot.item.id }} · 力量 {{ slot.item.power }}</p>
+                      <p class="equipment-hint" v-else>通过商店或合成获取装备</p>
+                    </div>
+                  </section>
+
+                  <section class="panel-card skill-list" v-if="playerSkillDetails.length">
+                    <h5>携带技能</h5>
+                    <v-tooltip v-for="skill in playerSkillDetails" :key="skill.key" location="top">
+                      <template #activator="{ props }">
+                        <div class="skill-chip" v-bind="props">
+                          <span>{{ skill.name }}</span>
+                          <span class="skill-chip__level">Lv.{{ skill.level }}</span>
+                        </div>
+                      </template>
+                      <div class="item-tooltip">
+                        <p><strong>{{ skill.name }}</strong> · Lv.{{ skill.level }}</p>
+                        <p>{{ skill.detail || '暂无效果描述' }}</p>
+                      </div>
+                    </v-tooltip>
+                  </section>
+
+                  <section class="panel-card buff-list" v-if="player.buffs && player.buffs.length">
+                    <h5>临时增益</h5>
+                    <div class="buff-chip" v-for="(buff,idx) in player.buffs" :key="idx">
+                      <p>{{ buff.name || 'Buff' }} <span v-if="buff.power">· +{{ buff.power }} 力量</span></p>
+                      <small>到期：{{ formatBuffTime(buff.expire) }}</small>
+                    </div>
+                  </section>
+                </div>
+              </v-window-item>
+            </v-window>
+          </div>
+        </div>
+      </div>
+    <v-dialog v-model="buildingDialog" max-width="600">
+      <v-card v-if="selectedBuilding" class="building-dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">建筑详情</div>
+            <div>{{ selectedBuilding.name }} · Lv.{{ selectedBuilding.level }}</div>
+          </div>
+          <v-btn icon="mdi-close" variant="text" @click="closeBuildingDialog"></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <p class="building-description">{{ selectedBuilding.description }}</p>
+          <div class="building-meta">
+            <div>
+              <span class="meta-label" style="display: block;">当前</span>
+              <strong style="display: block;" v-for="line in selectedBuilding.currentEffect.split('\n')" :key="line">{{ line }}</strong>
+            </div>
+            <div>
+              <span class="meta-label" style="display: block;">下一级</span>
+              <strong style="display: block;" v-for="line in (selectedBuilding.nextEffect || '--').split('\n')" :key="line">{{ line }}</strong>
+            </div>
+          </div>
+          <div class="building-materials" v-if="selectedBuilding.materials && selectedBuilding.materials.length">
+            <p class="eyebrow">升级材料</p>
+            <ul>
+              <li v-for="material in selectedBuilding.materials" :key="material.label">
+                <span>{{ material.label }}</span>
+                <span :class="{ 'text-ready': material.current >= material.required }">{{ material.current }} / {{ material.required }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="building-prereq" v-if="selectedBuilding.prerequisites && selectedBuilding.prerequisites.length">
+            <p class="eyebrow">前置建筑</p>
+            <ul>
+              <li v-for="pr in selectedBuilding.prerequisites" :key="pr.key">
+                <span>{{ pr.label }}</span>
+                <span :class="{ 'text-ready': pr.met }">Lv.{{ pr.current }}/{{ pr.required }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="cooldown-tag" v-if="gameDashboard.buildCooldownSeconds > 0">
+            建筑冷却：{{ formatDuration(gameDashboard.buildCooldownSeconds) }}
+          </div>
+          <div class="building-actions mt-4">
+            <v-select
+              v-model="buildingForm.itemId"
+              :items="bagSelectOptions"
+              item-title="label"
+              item-value="value"
+              label="消耗背包道具"
+              density="compact"
+              variant="outlined"
+              hide-details
+              :disabled="!bagSelectOptions.length"
+            ></v-select>
+            <div class="action-buttons">
+              <v-btn
+                variant="outlined"
+                color="cyan-lighten-2"
+                :disabled="!buildingForm.itemId || gameDashboard.buildCooldownSeconds > 0"
+                @click="handleBuildingAdd"
+              >
+                添加材料
+              </v-btn>
+              <v-btn
+                variant="flat"
+                color="cyan-lighten-1"
+                :disabled="!selectedBuilding.canUpgrade"
+                @click="handleBuildingUpgrade"
+              >
+                升级
+              </v-btn>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+    <!-- Rename dialog -->
+    <v-dialog v-model="renameDialog" max-width="480">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">修改昵称</div>
+            <div>请输入新的玩家昵称</div>
+          </div>
+          <v-btn icon="mdi-close" variant="text" @click="renameDialog = false"></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="renameForm.newName"
+            label="新昵称"
+            maxlength="20"
+            density="compact"
+            hide-details
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="renameDialog = false">取消</v-btn>
+          <v-btn color="cyan-lighten-2" :loading="renameSubmitting" @click="submitRename">确定</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="drawDialog.visible" max-width="640">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">{{ drawModeLabels[drawDialog.mode] }}</div>
+            <div>选择抽取次数并查看结果</div>
+          </div>
+          <v-btn icon="mdi-close" variant="text" @click="closeDrawDialog"></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-btn-toggle
+            v-model="drawDialog.drawType"
+            class="draw-options"
+            density="comfortable"
+          >
+            <v-btn
+              v-for="opt in drawOptions"
+              :key="opt.value"
+              class="draw-option-btn"
+              :value="opt.value"
+            >{{ opt.label }}</v-btn>
+          </v-btn-toggle>
+          <p class="item-subline" style="margin-top:12px;">预计消耗：{{ currentDrawCost }} 金币</p>
+          <div class="draw-results" style="margin-top:16px;">
+            <p class="eyebrow" style="margin-bottom:6px;">抽取结果</p>
+            <div v-if="drawDialog.results.length" class="draw-result-grid">
+              <div class="draw-result-card" v-for="(result,idx) in drawDialog.results" :key="idx">
+                <p class="item-name" :class="rarityClass(result.rarity)">{{ result.name }}</p>
+                <p v-if="result.count">数量：×{{ result.count }}</p>
+                <p class="item-subline" v-if="result.description">{{ result.description }}</p>
+              </div>
+            </div>
+            <div v-else class="text-medium-emphasis">尚未抽取，选择次数后点击开始</div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="closeDrawDialog">关闭</v-btn>
+          <v-btn
+            color="cyan-lighten-2"
+            :disabled="!drawDialog.drawType"
+            :loading="drawDialog.loading"
+            @click="submitDraw"
+          >开始抽取</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="portDialog.visible" max-width="960">
+      <v-card class="port-dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center flex-wrap" style="gap:8px;">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">港口讨伐</div>
+            <div v-if="portDialog.state">港口 Lv.{{ portDialog.state.level }} · 队伍上限 {{ portDialog.state.teamSize }} 人</div>
+            <div v-else>加载港口信息</div>
+          </div>
+          <div class="d-flex align-center" style="gap:4px;">
+            <v-btn icon="mdi-refresh" variant="text" :loading="portDialog.loading" @click="refreshPortStatus()"></v-btn>
+            <v-btn icon="mdi-close" variant="text" @click="closePortDialog"></v-btn>
+          </div>
+        </v-card-title>
+        <v-card-text>
+          <div v-if="portDialog.loading" class="text-center my-6">
+            <v-progress-circular indeterminate size="32" color="cyan-lighten-2"></v-progress-circular>
+          </div>
+          <template v-else>
+            <div v-if="!portDialog.state" class="text-medium-emphasis">暂无港口数据或建筑未解锁。</div>
+            <div v-else>
+              <div class="port-section">
+                <p class="eyebrow">港口信息</p>
+                <div class="port-meta-grid">
+                  <div>
+                    <span class="meta-label">港口等级</span>
+                    <strong>Lv.{{ portDialog.state.level }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">每日次数</span>
+                    <strong>{{ portDialog.state.maxAttempts }} / 剩余 {{ portDialog.state.attemptsRemaining }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">队伍上限</span>
+                    <strong>{{ portDialog.state.teamSize }} 人</strong>
+                  </div>
+                </div>
+                <p class="item-subline" style="margin-top:8px;">{{ portDialog.state.description || '暂无描述' }}</p>
+              </div>
+
+              <div class="port-section" v-if="portBattleState">
+                <div class="d-flex justify-space-between align-center flex-wrap" style="gap:8px;">
+                  <div>
+                    <h4 style="margin:0;">{{ (portBattleState.monster && portBattleState.monster.name) || '未知巨兽' }}</h4>
+                    <p class="item-subline">难度 {{ '★'.repeat(portBattleState.difficulty || 1) }} · 回合 {{ portBattleState.round.current }}/{{ portBattleState.round.max }}</p>
+                  </div>
+                  <v-chip :color="portStatusChipColor" variant="flat">{{ portStatusLabel }}</v-chip>
+                </div>
+                <div class="port-meta-grid" style="margin-top:12px;">
+                  <div>
+                    <span class="meta-label">怪物生命</span>
+                    <strong>{{ portBattleState.monsterHp.current }} / {{ portBattleState.monsterHp.max }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">船体耐久</span>
+                    <strong>{{ portBattleState.ship.current }} / {{ portBattleState.ship.max }}</strong>
+                  </div>
+                </div>
+                <div class="port-buff-chips" style="margin-top:12px; display: flex; justify-content: space-between;" v-if="portBattleState.environmentBuff">
+                  <span>环境：{{ portBattleState.environmentBuff.name }}</span>
+                  <span class="text-medium-emphasis">{{ portBattleState.environmentBuff.description }}</span>
+                </div>
+                <div class="port-section" v-if="portBattleState.monsterBuffs && portBattleState.monsterBuffs.length" style="margin-bottom:0;">
+                  <p class="eyebrow">怪物特性</p>
+                  <ul class="craft-list">
+                    <li v-for="buff in portBattleState.monsterBuffs" :key="buff.id">
+                      <span>{{ buff.name }} Lv.{{ buff.level }}</span>
+                      <span class="text-medium-emphasis">{{ buff.description }}</span>
+                    </li>
+                  </ul>
+                </div>
+                <div class="port-section" v-if="portBattleState.bonusBuffs && portBattleState.bonusBuffs.length" style="margin-bottom:0;">
+                  <p class="eyebrow">讨伐奖励</p>
+                  <ul class="craft-list">
+                    <li v-for="buff in portBattleState.bonusBuffs" :key="buff.id">
+                      <span>{{ buff.name }}</span>
+                      <span class="text-medium-emphasis">{{ buff.description }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="port-section" v-else>
+                <p class="text-medium-emphasis">当前海域风平浪静，等待下一只海怪来袭。</p>
+              </div>
+
+              <div class="port-section">
+                <p class="eyebrow">讨伐队伍</p>
+                <template v-if="portBattleState && portBattleState.players.length">
+                  <table class="port-team-table">
+                    <thead>
+                      <tr>
+                        <th>队员</th>
+                        <th>携带道具</th>
+                        <th>身份</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="member in portBattleState.players" :key="member.qq">
+                        <td>
+                          {{ member.name }}
+                          <span class="text-medium-emphasis">（{{ member.qq }}）</span>
+                        </td>
+                        <td>{{ member.itemName || '未装备' }}</td>
+                        <td>
+                          <span v-if="member.isLeader">队长</span>
+                          <span v-else-if="member.qq === String(player.qq)">自己</span>
+                          <span v-else>成员</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+                <p v-else class="text-medium-emphasis">暂无玩家加入。</p>
+              </div>
+
+              <div class="port-section">
+                <p class="eyebrow">操作</p>
+                <div class="d-flex flex-wrap" style="gap:8px;">
+                  <v-btn
+                    color="cyan-lighten-2"
+                    variant="outlined"
+                    :disabled="!canJoinPortBattle"
+                    :loading="portDialog.joinLoading"
+                    @click="joinPortBattle"
+                  >加入队伍</v-btn>
+                  <v-btn
+                    color="deep-purple-lighten-3"
+                    variant="tonal"
+                    :disabled="!canLeavePortBattle"
+                    :loading="portDialog.leaveLoading"
+                    @click="leavePortBattle"
+                  >退出队伍</v-btn>
+                  <v-btn
+                    color="cyan-lighten-1"
+                    variant="flat"
+                    :disabled="!canStartPortBattle"
+                    :loading="portDialog.startLoading"
+                    @click="startPortBattle"
+                  >开始战斗</v-btn>
+                </div>
+                <div v-if="canEquipPortItem" class="d-flex flex-wrap align-center" style="gap:8px; margin-top:12px;">
+                  <v-select
+                    v-model="portDialog.equipItemId"
+                    :items="portLoadoutOptions"
+                    item-title="label"
+                    item-value="id"
+                    label="选择携带道具"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    style="min-width:240px;"
+                  ></v-select>
+                  <v-btn
+                    color="cyan-lighten-2"
+                    variant="flat"
+                    :disabled="!portDialog.equipItemId"
+                    :loading="portDialog.equipLoading"
+                    @click="equipPortItem"
+                  >携带道具</v-btn>
+                </div>
+              </div>
+
+              <!-- <div class="port-section" v-if="portDialog.state.availableItems && portDialog.state.availableItems.length">
+                <p class="eyebrow">可携带道具</p>
+                <div class="port-buff-chips">
+                  <div class="port-item-chip" v-for="item in portDialog.state.availableItems" :key="item.id">
+                    <strong>[{{ item.id }}] {{ item.name }}</strong>
+                    <p class="item-subline" style="margin:4px 0 0;">持有 {{ item.owned }} / 需求 {{ item.required }}</p>
+                    <p class="text-medium-emphasis" style="margin:4px 0 0;">{{ item.description || '暂无描述' }}</p>
+                  </div>
+                </div>
+              </div> -->
+
+              <div class="port-section" v-if="portBattleState && portBattleState.logs && portBattleState.logs.length">
+                <p class="eyebrow">战报</p>
+                <div class="port-logs">
+                  <p v-for="(log, idx) in portBattleState.logs" :key="idx">{{ log }}</p>
+                </div>
+              </div>
+            </div>
+          </template>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+    </v-app>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+    const { createVuetify } = Vuetify;
+    const buildEmptyPlayer = () => ({
+      qq: '',
+      name: '',
+      level: 0,
+      exp: 0,
+      nextExp: 1,
+      gold: 0,
+      score: 0,
+      fishCount: 0,
+      power: 0,
+      feverPower: 0,
+      bag: [],
+      equipment: { ids: {}, details: {} },
+      skills: [],
+      buffs: [],
+    });
+
+    const app = createApp({
+      data() {
+        return {
+          credentials: { game: '', user: '' },
+          socket: null,
+          messages: [],
+          shopItems: [],
+          player: buildEmptyPlayer(),
+          activeTab: 'shop',
+          catching: false,
+          alertBanner: { visible: false, text: '', type: 'info' },
+          alertTimer: null,
+          skillIndex: {},
+          gameDashboard: { pool: null, pot: null, buildings: [], buildCooldownSeconds: 0, timestamp: 0 },
+          selectedBuildingKey: '',
+          buildingDialog: false,
+          statusLoading: false,
+          potForm: { itemId: null, count: 1 },
+          buildingForm: { itemId: null },
+          // rename dialog state
+          renameDialog: false,
+          renameForm: { newName: '' },
+          renameSubmitting: false,
+          craftableItems: [],
+          craftLoading: false,
+          craftingId: 0,
+          craftExpanded: [],
+          drawDialog: {
+            visible: false,
+            mode: 'standard',
+            drawType: 'single',
+            loading: false,
+            results: [],
+          },
+          signingIn: false,
+          chatInput: '',
+          chatInputReadonly: true,
+          isMobile: false,
+          sideDrawer: false,
+          drawOptions: [
+            { value: 'single', label: '单抽' },
+            { value: 'ten', label: '十连' },
+            { value: 'hundred', label: '百连' },
+            { value: 'thousand', label: '千连' },
+          ],
+          drawModeLabels: { standard: '常规抽取', mystery: '神秘抽取' },
+          drawCostMap: {
+            standard: { single: 10, ten: 100, hundred: 1000, thousand: 10000 },
+            mystery: { single: 100, ten: 1000, hundred: 10000, thousand: 100000 },
+          },
+          portDialog: {
+            visible: false,
+            loading: false,
+            state: null,
+            equipItemId: null,
+            joinLoading: false,
+            leaveLoading: false,
+            equipLoading: false,
+            startLoading: false,
+          },
+          portRefreshTimer: null,
+        }
+      },
+      computed: {
+        expPercent() {
+          const exp = Number(this.player.exp || 0);
+          const next = Number(this.player.nextExp || 0);
+          if (!next) return 0;
+          return Math.min(100, Math.round((exp / next) * 100));
+        },
+        equipmentSlots() {
+          const details = this.player.equipment?.details || {};
+          return [
+            { key: 'rod', label: '渔具', item: details.rod || null },
+            { key: 'tool', label: '工具', item: details.tool || null },
+            { key: 'accessory', label: '配件', item: details.accessory || null },
+          ];
+        },
+        canCatch() {
+          const hasCred = Boolean(this.credentials.game && this.credentials.user);
+          const hasFish = Boolean(this.gameDashboard.pool && this.gameDashboard.pool.currentFish);
+          return hasCred && hasFish && !this.catching;
+        },
+        sortedShopItems() {
+          return [...this.shopItems]
+            .sort((a, b) => Number(a?.id || Infinity) - Number(b?.id || Infinity));
+        },
+        sortedBagItems() {
+          const list = Array.isArray(this.player.bag) ? this.player.bag : [];
+          return list
+            .map((entry, index) => {
+              const resolvedItem = entry.item || {};
+              const resolvedId = Number(resolvedItem.id ?? entry.item_id ?? entry.id ?? index);
+              return { ...entry, resolvedItem, resolvedId };
+            })
+            .sort((a, b) => a.resolvedId - b.resolvedId);
+        },
+        playerSkillDetails() {
+          return this.getSkillDetails(this.player.skills);
+        },
+        bagSelectOptions() {
+          return this.sortedBagItems
+            .filter((entry) => entry.resolvedItem.id)
+            .map((entry) => ({
+              value: entry.resolvedItem.id,
+              label: `[${entry.resolvedItem.id}] ${entry.resolvedItem.name} ×${entry.count}`,
+            }));
+        },
+        selectedBuilding() {
+          if (!this.selectedBuildingKey) {
+            return null;
+          }
+          return this.gameDashboard.buildings.find((b) => b.key === this.selectedBuildingKey) || null;
+        },
+        potProgress() {
+          if (!this.gameDashboard.pot || !this.gameDashboard.pot.capacity) {
+            return 0;
+          }
+          const pct = (this.gameDashboard.pot.current / this.gameDashboard.pot.capacity) * 100;
+          return Math.max(0, Math.min(100, Math.round(pct)));
+        },
+        currentDrawCost() {
+          const mode = this.drawDialog.mode || 'standard';
+          const type = this.drawDialog.drawType || 'single';
+          const costTable = this.drawCostMap[mode] || this.drawCostMap.standard;
+          return costTable?.[type] || 0;
+        },
+        hasPortAccess() {
+          const buildings = Array.isArray(this.gameDashboard.buildings) ? this.gameDashboard.buildings : [];
+          const port = buildings.find((b) => b.key === 'port');
+          return Boolean(port && port.level > 0);
+        },
+        portBattleState() {
+          return this.portDialog.state && this.portDialog.state.battle ? this.portDialog.state.battle : null;
+        },
+        portSelfEntry() {
+          const battle = this.portBattleState;
+          if (!battle || !this.player.qq) {
+            return null;
+          }
+          const qq = String(this.player.qq);
+          return battle.players.find((member) => String(member.qq) === qq) || null;
+        },
+        portLoadoutOptions() {
+          const list = this.portDialog.state && Array.isArray(this.portDialog.state.availableItems)
+            ? this.portDialog.state.availableItems
+            : [];
+          return list.map((item) => ({
+            ...item,
+            label: `[${item.id}] ${item.name} · 拥有 ${item.owned}/${item.required}`,
+          }));
+        },
+        canJoinPortBattle() {
+          const battle = this.portBattleState;
+          if (!battle || battle.status !== 'idle') {
+            return false;
+          }
+          const remaining = this.portDialog.state ? this.portDialog.state.attemptsRemaining : 0;
+          if (remaining <= 0) {
+            return false;
+          }
+          const teamSize = this.portDialog.state ? this.portDialog.state.teamSize : 0;
+          const members = Array.isArray(battle.players) ? battle.players : [];
+          return !this.portSelfEntry && members.length < teamSize;
+        },
+        canLeavePortBattle() {
+          const battle = this.portBattleState;
+          return Boolean(this.portSelfEntry && battle && battle.status === 'idle');
+        },
+        canEquipPortItem() {
+          return this.canLeavePortBattle;
+        },
+        canStartPortBattle() {
+          const battle = this.portBattleState;
+          const members = battle && Array.isArray(battle.players) ? battle.players : [];
+          return Boolean(this.portSelfEntry && battle && battle.status === 'idle' && members.length > 0);
+        },
+        portStatusLabel() {
+          const battle = this.portBattleState;
+          if (!battle) {
+            return '未激活';
+          }
+          const mapping = {
+            idle: '等待组队',
+            fighting: '战斗进行中',
+            success: '讨伐成功',
+            fail: '讨伐失败',
+          };
+          return mapping[battle.status] || battle.status || '未知状态';
+        },
+        portStatusChipColor() {
+          const battle = this.portBattleState;
+          if (!battle) {
+            return 'grey-darken-1';
+          }
+          const mapping = {
+            idle: 'cyan-lighten-2',
+            fighting: 'deep-orange-accent-2',
+            success: 'light-green-accent-3',
+            fail: 'red-accent-2',
+          };
+          return mapping[battle.status] || 'grey-darken-1';
+        },
+      },
+      watch: {
+        sortedBagItems: {
+          handler(items) {
+            if (!Array.isArray(items) || items.length === 0) {
+              this.potForm.itemId = null;
+              this.buildingForm.itemId = null;
+              return;
+            }
+            const first = items.find((entry) => entry.resolvedItem.id);
+            if (first) {
+              if (!this.potForm.itemId) {
+                this.potForm.itemId = first.resolvedItem.id;
+              }
+              if (!this.buildingForm.itemId) {
+                this.buildingForm.itemId = first.resolvedItem.id;
+              }
+            }
+          },
+          immediate: true,
+          deep: true,
+        },
+        'portDialog.visible'(visible) {
+          if (visible) {
+            this.refreshPortStatus();
+            this.startPortPolling();
+          } else {
+            this.stopPortPolling();
+          }
+        },
+      },
+      mounted() {
+        this.fetchSkills();
+        this.extractQueryParams();
+        if (this.credentials.game && this.credentials.user) {
+          this.connectWs();
+          this.refreshShop();
+          this.refreshPlayer();
+          this.refreshCraftables();
+        }
+          this.handleResize();
+          window.addEventListener('resize', this.handleResize);
+      },
+      beforeUnmount() {
+        this.stopPortPolling();
+          window.removeEventListener('resize', this.handleResize);
+      },
+      methods: {
+        async fetchSkills() {
+          try {
+            const r = await axios.get('/web/fishgame/api/skills');
+            if (r.data?.code === 0 && Array.isArray(r.data.skills)) {
+              const next = {};
+              r.data.skills.forEach((sk) => {
+                if (sk && typeof sk.id !== 'undefined') {
+                  next[Number(sk.id)] = sk;
+                }
+              });
+              this.skillIndex = next;
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        },
+          handleResize() {
+            const next = window.innerWidth <= 960;
+            this.isMobile = next;
+            if (!next) {
+              this.sideDrawer = false;
+            }
+          },
+          openSidePanel() {
+            this.sideDrawer = true;
+          },
+          closeSidePanel() {
+            this.sideDrawer = false;
+          },
+          resolveWsTimestamp(payload) {
+            if (!payload) {
+              return null;
+            }
+            const raw = Number(payload.pushedAt || payload.timestamp || payload.ts);
+            if (Number.isFinite(raw) && raw > 0) {
+              return raw;
+            }
+            return null;
+          },
+        extractQueryParams() {
+          const params = new URLSearchParams(window.location.search);
+          this.credentials.game = (params.get('game') || '').trim();
+          this.credentials.user = (params.get('user') || '').trim();
+        },
+        connectWs() {
+          try {
+            const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/web/fishgame/ws';
+            const ws = new WebSocket(url);
+            ws.addEventListener('open', () => {
+              ws.send(JSON.stringify({ type: 'identify', game: this.credentials.game, user: this.credentials.user }));
+            });
+            ws.addEventListener('message', (ev) => {
+              try {
+                const d = JSON.parse(ev.data);
+                this.onWsMsg(d);
+              } catch (e) {
+                this.appendLog('收到无法解析的广播: ' + ev.data);
+              }
+            });
+            ws.addEventListener('close', () => { this.appendLog('你掉线了，请刷新网页'); });
+            this.socket = ws;
+          } catch (e) {
+            this.appendLog('WebSocket 建立失败: ' + e.message);
+          }
+        },
+        onWsMsg(d) {
+          const ts = this.resolveWsTimestamp(d);
+          const isHistory = Boolean(d && (d.history || d._history));
+          switch (d.type) {
+            case 'connected':
+              this.appendLog(`已连接到群 ${d.game}，当前身份 ${d.user}`, ts);
+              break;
+            case 'spawn': {
+              const fishName = d.fish?.name || '未知鱼类';
+              const rarity = d.fish?.rarity ? `【${d.fish.rarity}】` : '';
+              this.appendLog(`刷鱼：${fishName}${rarity} 已出现`, ts);
+              if (!isHistory) {
+                this.refreshDashboard();
+              }
+              break;
+            }
+            case 'fish_leave': {
+              const fishName = d.fish?.name || '鱼群';
+              this.appendLog(`离开：${fishName} 已离场${d.isFever ? '（Fever 状态）' : ''}`, ts);
+              if (!isHistory) {
+                this.refreshDashboard();
+              }
+              break;
+            }
+            case 'catch': {
+              const fishName = d.fish?.name || '未知鱼类';
+              const who = d.display || d.by || '未知玩家';
+              this.appendLog(`捕获：${who} ${d.message}`, ts);
+              if (!isHistory) {
+                this.refreshDashboard();
+              }
+              break;
+            }
+            case 'oversea_spawn':
+              this.appendLog(`港口警报：${d.battle?.monster_name || '未知怪物'} 正在接近！`, ts);
+              break;
+            case 'oversea_battle_update':
+              this.appendLog(`港口战报：第 ${d.round || '-'} 轮状态 ${d.status || '未知'}`, ts);
+              if (Array.isArray(d.logs)) {
+                d.logs.forEach(log => this.appendLog(`└ ${log}`, ts));
+              }
+              break;
+            case 'fever_start':
+              this.appendLog(`Fever 开启：持续 ${Math.max(1, Math.round((d.duration || 0)/60))} 分钟`, ts);
+              break;
+            case 'chat': {
+              const author = d.display || d.user || '未知玩家';
+              const text = (d.text || '').toString();
+              if (text.trim()) {
+                this.appendLog(`聊天｜${author}：${text}`, ts);
+              }
+              break;
+            }
+            default:
+              this.appendLog(`广播：${JSON.stringify(d)}`, ts);
+          }
+        },
+        async refreshShop() {
+          try {
+            const r = await axios.get('/web/fishgame/api/shop/list');
+            if (r.data.code === 0) this.shopItems = r.data.items;
+          } catch (e) { console.error(e) }
+        },
+        async refreshDashboard() {
+          if (!this.credentials.game || !this.credentials.user) {
+            return;
+          }
+          this.statusLoading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/dashboard', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+            });
+            if (r.data?.code === 0 && r.data.dashboard) {
+              const payload = r.data.dashboard;
+              const buildings = Array.isArray(payload.buildings) ? payload.buildings : [];
+              this.gameDashboard = {
+                pool: payload.pool || null,
+                pot: payload.pot || null,
+                buildings,
+                buildCooldownSeconds: payload.buildCooldownSeconds || 0,
+                timestamp: payload.timestamp || Date.now(),
+              };
+              if (buildings.length === 0) {
+                this.selectedBuildingKey = '';
+                this.buildingDialog = false;
+              } else if (!this.selectedBuildingKey) {
+                this.selectedBuildingKey = buildings[0].key;
+              } else if (!buildings.some((b) => b.key === this.selectedBuildingKey)) {
+                this.selectedBuildingKey = buildings[0].key;
+              }
+              if (!this.selectedBuilding) {
+                this.buildingDialog = false;
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            this.statusLoading = false;
+          }
+        },
+        async buyItem(it) {
+          if (!confirm(`确认购买 ${it.name} 吗？`)) return;
+          try {
+            const r = await axios.post('/web/fishgame/api/shop/buy', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              item_id: it.id,
+            });
+            const msg = r.data?.message || '';
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(msg, type);
+            if (r.data?.code === 0) {
+              this.refreshPlayer();
+            }
+          } catch (e) {
+            this.showAlert('网络错误', 'error');
+          }
+        },
+        async refreshPlayer() {
+          try {
+            const r = await axios.post('/web/fishgame/api/player', { game: this.credentials.game, user: this.credentials.user });
+            if (r.data.code === 0) {
+              this.player = { ...buildEmptyPlayer(), ...r.data.player };
+              await this.refreshDashboard();
+            }
+          } catch (e) { console.error(e) }
+        },
+        async refreshCraftables(preserveExpansion = true, showLoading = true) {
+          if (!this.credentials.game || !this.credentials.user) {
+            this.craftableItems = [];
+            if (showLoading) {
+              this.craftLoading = false;
+            }
+            if (!preserveExpansion) {
+              this.craftExpanded = [];
+            }
+            return;
+          }
+          const previousExpanded = preserveExpansion ? [...this.craftExpanded] : [];
+          if (showLoading) {
+            this.craftLoading = true;
+          }
+          try {
+            const r = await axios.post('/web/fishgame/api/compose/list', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+            });
+            if (r.data?.code === 0 && Array.isArray(r.data.items)) {
+              this.craftableItems = r.data.items.sort((a, b) => Number(a.id || Infinity) - Number(b.id || Infinity));
+            } else {
+              this.craftableItems = [];
+            }
+            if (preserveExpansion) {
+              this.$nextTick(() => {
+                this.craftExpanded = previousExpanded.filter((id) =>
+                  this.craftableItems.some((item) => item.id === id)
+                );
+              });
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            if (showLoading) {
+              this.craftLoading = false;
+            }
+          }
+        },
+        changeNickname() {
+          this.renameForm.newName = this.player.name || '';
+          this.renameDialog = true;
+        },
+        async submitRename() {
+          const name = (this.renameForm.newName || '').trim();
+          if (!name) {
+            this.showAlert('昵称不能为空', 'warning');
+            return;
+          }
+          if (name.length > 20) {
+            this.showAlert('昵称长度不能超过 20 个字符', 'warning');
+            return;
+          }
+          this.renameSubmitting = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/player/rename', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              name: name,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '修改完成', type);
+            if (r.data?.code === 0) {
+              await this.refreshPlayer();
+              this.renameDialog = false;
+            }
+          } catch (e) {
+            this.showAlert('网络错误，修改失败', 'error');
+          } finally {
+            this.renameSubmitting = false;
+          }
+        },
+        async useItem(itemId) {
+          if (!itemId) return;
+          if (!confirm('确认使用该道具？')) return;
+          try {
+            const r = await axios.post('/web/fishgame/api/inventory/use', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              item_id: itemId,
+              params: [],
+            });
+            const msg = r.data?.message || '';
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(msg, type);
+            if (r.data?.code === 0) {
+              this.refreshPlayer();
+            }
+          } catch (e) {
+            this.showAlert('网络错误', 'error');
+          }
+        },
+        appendLog(text, pushedAt = null) {
+          let stamp = new Date().toLocaleTimeString();
+          const ts = Number(pushedAt);
+          if (Number.isFinite(ts) && ts > 0) {
+            stamp = new Date(ts * 1000).toLocaleTimeString();
+          }
+          this.messages.push(`[${stamp}] ${text}`);
+          if (this.messages.length > 200) {
+            this.messages.splice(0, this.messages.length - 200);
+          }
+          this.$nextTick(() => {
+            const el = this.$refs.log;
+            if (el) {
+              el.scrollTop = el.scrollHeight;
+            }
+          });
+        },
+        formatBuffTime(expire) {
+          if (!expire) {
+            return '持续中';
+          }
+          try {
+            const date = new Date(expire * 1000);
+            return date.toLocaleString();
+          } catch (e) {
+            return '未知';
+          }
+        },
+        formatItemType(kind) {
+          if (!kind) return '';
+          const mapping = { rod: '渔具', tool: '工具', accessory: '配件' };
+          return mapping[kind] || kind;
+        },
+        rarityClass(rarity) {
+          const value = Number(rarity || 0);
+          if (value >= 1 && value <= 5) {
+            return `rarity-${value}`;
+          }
+          return '';
+        },
+        getSkillDetails(skills) {
+          if (!skills) return [];
+          const list = Array.isArray(skills) ? skills : Object.values(skills);
+          return list
+            .map((raw, index) => {
+              const id = Number(raw?.id ?? raw?.skill_id ?? raw);
+              if (!id || Number.isNaN(id)) {
+                return null;
+              }
+              const meta = this.skillIndex[id] || null;
+              const rawLevel = Number(raw?.level ?? raw?.lv ?? 1);
+              const level = meta ? Math.min(Math.max(rawLevel, 1), meta.max_level || rawLevel || 1) : Math.max(rawLevel || 1, 1);
+              return {
+                key: `${id}-${index}`,
+                id,
+                level,
+                name: meta?.name || `技能 ${id}`,
+                detail: meta ? this.renderSkillDetail(meta, level) : '',
+              };
+            })
+            .filter(Boolean);
+        },
+        renderSkillDetail(skillMeta, level = 1) {
+          if (!skillMeta) return '';
+          const safeLevel = Math.min(Math.max(level, 1), skillMeta.max_level || level || 1);
+          const template = skillMeta.detail || skillMeta.detail_oversea || skillMeta.desc || '';
+          if (!template) return '';
+          const ctx = {};
+          if (skillMeta.effect && typeof skillMeta.effect === 'object') {
+            Object.entries(skillMeta.effect).forEach(([key, val]) => {
+              if (Array.isArray(val) && val.length) {
+                const idx = Math.min(Math.max(safeLevel - 1, 0), val.length - 1);
+                ctx[key] = val[idx];
+              } else if (val !== undefined && val !== null) {
+                ctx[key] = val;
+              }
+            });
+          }
+          return template.replace(/\{([^{}]+)\}/g, (_, rawKey) => {
+            const key = String(rawKey || '').trim();
+            return typeof ctx[key] === 'undefined' ? `{${key}}` : ctx[key];
+          });
+        },
+        selectBuilding(key, openDialog = false) {
+          this.selectedBuildingKey = key;
+          if (openDialog) {
+            this.buildingDialog = true;
+          }
+        },
+        openBuildingDialog(key) {
+          this.selectBuilding(key, true);
+        },
+        closeBuildingDialog() {
+          this.buildingDialog = false;
+        },
+        formatDuration(seconds) {
+          const value = Number(seconds || 0);
+          if (!value || value <= 0) {
+            return '--';
+          }
+          const total = Math.max(0, Math.floor(value));
+          const hours = Math.floor(total / 3600);
+          const minutes = Math.floor((total % 3600) / 60);
+          const secs = total % 60;
+          if (hours > 0) {
+            return `${hours}时${minutes}分`;
+          }
+          if (minutes > 0) {
+            return `${minutes}分${secs}秒`;
+          }
+          return `${secs}秒`;
+        },
+        async handlePotAdd() {
+          if (!this.potForm.itemId || this.potForm.count <= 0) {
+            return;
+          }
+          try {
+            const r = await axios.post('/web/fishgame/api/pot/add', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              item_id: this.potForm.itemId,
+              count: this.potForm.count,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '大锅操作完成', type);
+            if (r.data?.code === 0) {
+              await this.refreshPlayer();
+            }
+          } catch (e) {
+            this.showAlert('添加燃料失败', 'error');
+          }
+        },
+        async handleBuildingAdd() {
+          if (!this.selectedBuilding || !this.buildingForm.itemId) {
+            return;
+          }
+          if (this.gameDashboard.buildCooldownSeconds > 0) {
+            this.showAlert('建筑冷却中，稍后再试', 'warning');
+            return;
+          }
+          try {
+            const r = await axios.post('/web/fishgame/api/buildings/add', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              building: this.selectedBuilding.name,
+              item_id: this.buildingForm.itemId,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '添加材料完成', type);
+            if (r.data?.code === 0) {
+              await this.refreshPlayer();
+            }
+          } catch (e) {
+            this.showAlert('添加材料失败', 'error');
+          }
+        },
+        async handleBuildingUpgrade() {
+          if (!this.selectedBuilding) {
+            return;
+          }
+          try {
+            const r = await axios.post('/web/fishgame/api/buildings/upgrade', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              building: this.selectedBuilding.name,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '升级完成', type);
+            if (r.data?.code === 0) {
+              await this.refreshDashboard();
+            }
+          } catch (e) {
+            this.showAlert('升级失败', 'error');
+          }
+        },
+        async craftItem(itemId) {
+          if (!itemId || !this.credentials.game || !this.credentials.user) {
+            return;
+          }
+          this.craftingId = itemId;
+          try {
+            const r = await axios.post('/web/fishgame/api/compose', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              item_id: itemId,
+            });
+            const success = r.data?.code === 0;
+            this.showAlert(r.data?.message || (success ? '合成完成' : '合成失败'), success ? 'success' : 'error');
+            if (success) {
+              await this.refreshPlayer();
+              await this.refreshCraftables(true, false);
+            }
+          } catch (e) {
+            this.showAlert('合成失败，请稍后再试', 'error');
+          } finally {
+            this.craftingId = 0;
+          }
+        },
+        showAlert(message = '', type = 'info', timeout = 4000) {
+          if (this.alertTimer) {
+            clearTimeout(this.alertTimer);
+            this.alertTimer = null;
+          }
+          this.alertBanner.text = message;
+          this.alertBanner.type = type;
+          this.alertBanner.visible = true;
+          if (timeout) {
+            this.alertTimer = setTimeout(() => {
+              this.dismissAlert();
+            }, timeout);
+          }
+        },
+        dismissAlert() {
+          if (this.alertTimer) {
+            clearTimeout(this.alertTimer);
+            this.alertTimer = null;
+          }
+          this.alertBanner.visible = false;
+          this.alertBanner.text = '';
+        },
+        async catchFish(masterBall = false) {
+          if (!this.canCatch) return;
+          this.catching = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/catch', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              masterBall,
+            });
+            const msg = r.data?.message || '';
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(msg, type);
+            if (r.data?.code === 0) {
+              this.refreshPlayer();
+            }
+          } catch (e) {
+            this.showAlert('网络错误，捕鱼失败', 'error');
+          } finally {
+            this.catching = false;
+          }
+        },
+        openDrawDialog(mode = 'standard') {
+          if (!this.credentials.game || !this.credentials.user) {
+            this.showAlert('请先在 URL 中提供 game/user 参数', 'warning');
+            return;
+          }
+          this.drawDialog.mode = mode === 'mystery' ? 'mystery' : 'standard';
+          this.drawDialog.drawType = 'single';
+          this.drawDialog.results = [];
+          this.drawDialog.visible = true;
+        },
+        closeDrawDialog() {
+          this.drawDialog.visible = false;
+          this.drawDialog.loading = false;
+        },
+        async submitDraw() {
+          if (this.drawDialog.loading || !this.drawDialog.drawType) {
+            return;
+          }
+          this.drawDialog.loading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/gacha/draw', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              mode: this.drawDialog.mode,
+              draw_type: this.drawDialog.drawType,
+            });
+            if (r.data?.code === 0) {
+              this.drawDialog.results = Array.isArray(r.data.message) ? r.data.message : [];
+              this.showAlert('抽取完成', 'success');
+              await this.refreshPlayer();
+            } else {
+              this.showAlert(r.data?.message || '抽取失败', 'error');
+            }
+          } catch (e) {
+            this.showAlert('抽取失败，请稍后再试', 'error');
+          } finally {
+            this.drawDialog.loading = false;
+          }
+        },
+          async handleSignIn() {
+            if (!this.credentials.game || !this.credentials.user) {
+              this.showAlert('请先在 URL 中提供 game/user 参数', 'warning');
+              return;
+            }
+            if (this.signingIn) {
+              return;
+            }
+            this.signingIn = true;
+            try {
+              const r = await axios.post('/web/fishgame/api/signin', {
+                game: this.credentials.game,
+                user: this.credentials.user,
+              });
+              const success = r.data?.code === 0;
+              this.showAlert(r.data?.message || (success ? '签到成功' : '签到失败'), success ? 'success' : 'error');
+              if (success) {
+                await this.refreshPlayer();
+              }
+            } catch (e) {
+              this.showAlert('签到失败，请稍后再试', 'error');
+            } finally {
+              this.signingIn = false;
+            }
+          },
+          sendChat() {
+            if (!this.credentials.game || !this.credentials.user) {
+              this.showAlert('请先提供 game/user 参数', 'warning');
+              return;
+            }
+            const text = (this.chatInput || '').trim();
+            if (!text) {
+              return;
+            }
+            if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+              this.showAlert('连接未建立，稍后再试', 'warning');
+              return;
+            }
+            try {
+              this.socket.send(
+                JSON.stringify({
+                  type: 'chat',
+                  text,
+                  name: this.player.name || this.credentials.user,
+                }),
+              );
+              this.chatInput = '';
+            } catch (e) {
+              this.showAlert('发送失败，请稍后再试', 'error');
+            }
+          },
+        openPortDialog() {
+          if (!this.hasPortAccess) {
+            this.showAlert('港口尚未建造', 'warning');
+            return;
+          }
+          this.portDialog.visible = true;
+        },
+        closePortDialog() {
+          this.portDialog.visible = false;
+        },
+        startPortPolling() {
+          if (this.portRefreshTimer) {
+            return;
+          }
+          this.portRefreshTimer = setInterval(() => {
+            this.refreshPortStatus(false);
+          }, 7000);
+        },
+        stopPortPolling() {
+          if (this.portRefreshTimer) {
+            clearInterval(this.portRefreshTimer);
+            this.portRefreshTimer = null;
+          }
+        },
+        async refreshPortStatus(showLoading = true) {
+          if (!this.credentials.game || !this.credentials.user) {
+            return;
+          }
+          if (showLoading) {
+            this.portDialog.loading = true;
+          }
+          try {
+            const r = await axios.post('/web/fishgame/api/port/status', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+            });
+            if (r.data?.code === 0) {
+              this.portDialog.state = r.data.port || null;
+              const battle = this.portDialog.state && this.portDialog.state.battle;
+              if (battle && battle.selfLoadoutId) {
+                this.portDialog.equipItemId = battle.selfLoadoutId;
+              }
+              if (!battle) {
+                this.portDialog.equipItemId = null;
+              }
+            } else {
+              this.portDialog.state = null;
+              this.portDialog.equipItemId = null;
+              if (showLoading) {
+                this.showAlert(r.data?.message || '无法获取港口信息', 'error');
+              }
+            }
+          } catch (e) {
+            if (showLoading) {
+              this.showAlert('港口信息加载失败', 'error');
+            }
+          } finally {
+            if (!this.portDialog.state) {
+              this.portDialog.equipItemId = null;
+            }
+            if (showLoading) {
+              this.portDialog.loading = false;
+            }
+          }
+        },
+        async joinPortBattle() {
+          if (!this.canJoinPortBattle) {
+            return;
+          }
+          this.portDialog.joinLoading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/port/join', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              nickname: this.player.name,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '无法加入队伍', type);
+            if (r.data?.code === 0) {
+              await this.refreshPortStatus(false);
+            }
+          } catch (e) {
+            this.showAlert('加入队伍失败', 'error');
+          } finally {
+            this.portDialog.joinLoading = false;
+          }
+        },
+        async leavePortBattle() {
+          if (!this.canLeavePortBattle) {
+            return;
+          }
+          this.portDialog.leaveLoading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/port/leave', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '无法退出队伍', type);
+            if (r.data?.code === 0) {
+              await this.refreshPortStatus(false);
+            }
+          } catch (e) {
+            this.showAlert('退出队伍失败', 'error');
+          } finally {
+            this.portDialog.leaveLoading = false;
+          }
+        },
+        async equipPortItem() {
+          if (!this.portDialog.equipItemId || !this.canEquipPortItem) {
+            return;
+          }
+          this.portDialog.equipLoading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/port/equip', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+              item_id: this.portDialog.equipItemId,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '携带失败', type);
+            if (r.data?.code === 0) {
+              await this.refreshPortStatus(false);
+            }
+          } catch (e) {
+            this.showAlert('携带道具失败', 'error');
+          } finally {
+            this.portDialog.equipLoading = false;
+          }
+        },
+        async startPortBattle() {
+          if (!this.canStartPortBattle) {
+            return;
+          }
+          this.portDialog.startLoading = true;
+          try {
+            const r = await axios.post('/web/fishgame/api/port/start', {
+              game: this.credentials.game,
+              user: this.credentials.user,
+            });
+            const type = r.data?.code === 0 ? 'success' : 'error';
+            this.showAlert(r.data?.message || '无法开始战斗', type);
+            if (r.data?.code === 0) {
+              await this.refreshPortStatus(false);
+            }
+          } catch (e) {
+            this.showAlert('开始战斗失败', 'error');
+          } finally {
+            this.portDialog.startLoading = false;
+          }
+        },
+      }
+    })
+
+    const vuetify = createVuetify();
+    app.use(vuetify).mount('#app');
+  </script>
+</body>
+</html>

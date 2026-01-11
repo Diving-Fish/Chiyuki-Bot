@@ -1,3 +1,4 @@
+import time
 from collections import defaultdict
 from typing import Optional
 from src.data_access.redis import DictRedisData, redis_global
@@ -47,7 +48,8 @@ class FishPlayer(DictRedisData):
             "master_ball_crafts": 0,
             "accessory_meta": {},
             # 天赋经验：{ talent_id(str): total_exp(int) }
-            "talent_exp": {}
+            "talent_exp": {},
+            "skill29_power_state": {"value": 0, "expire_at": 0}
         }
 
     def refresh_buff(self):
@@ -119,6 +121,7 @@ class FishPlayer(DictRedisData):
         # 技能附加
         ctx = self.get_skill_context()
         base += ctx.get('flat_power', 0)
+        base += self._calc_ground_power_bonus(ctx)
         return base
     
     @property
@@ -139,7 +142,48 @@ class FishPlayer(DictRedisData):
         # 技能附加
         ctx = self.get_skill_context()
         base += ctx.get('flat_power', 0) + ctx.get('fever_power', 0)
+        base += self._calc_ground_power_bonus(ctx)
         return base
+
+    def _calc_ground_power_bonus(self, ctx: Optional[dict] = None) -> int:
+        """Convert ground attribute crit chance into flat power via skill 25."""
+        if ctx is None:
+            ctx = self.get_skill_context()
+        ratio = ctx.get('extra_power_from_ground', 0)
+        if ratio <= 0:
+            return 0
+        ground_level = self.get_talent_level(7)
+        if ground_level <= 0:
+            return 0
+        ground_attr_percent = 5 * ground_level
+        return ground_attr_percent * ratio / 100.0
+
+    def _get_skill29_state(self):
+        return self.data.setdefault('skill29_power_state', {"value": 0, "expire_at": 0})
+
+    def get_skill29_power_bonus(self) -> int:
+        state = self.data.get('skill29_power_state')
+        if not state:
+            return 0
+        value = int(state.get('value', 0))
+        if value <= 0:
+            return 0
+        if state.get('expire_at', 0) <= time.time():
+            state['value'] = 0
+            state['expire_at'] = 0
+            return 0
+        return value
+
+    def add_skill29_power_bonus(self, gain: int, max_value: int, duration: int = 1800) -> int:
+        if gain <= 0 or max_value <= 0:
+            return self.get_skill29_power_bonus()
+        state = self._get_skill29_state()
+        now = time.time()
+        if state.get('expire_at', 0) <= now:
+            state['value'] = 0
+        state['value'] = min(max_value, int(state.get('value', 0)) + gain)
+        state['expire_at'] = now + duration
+        return int(state['value'])
     
     @staticmethod
     def from_id(qq: str):
@@ -188,17 +232,34 @@ class FishPlayer(DictRedisData):
         from src.libraries.fishgame.data import fish_skills
         ctx = {
             'flat_power': 0,
+            'extra_power_from_ground': 0,
             'topic_power': {},
             'fail_reward': 0,
             'fail_item_percent': 0,
             'crit_percent': 0,
             'crit_rate': 0,
+            'crit_rate_from_grass': 0,
             'gold_rate': 0,
             'exp_rate': 0,
             'new_fish_power': 0,
             'old_fish_crit': 0,
             'success_rate': 0,
             'regenerate_percent': 0,
+            'fairy_crit': 0,
+            'fighting_crit': 0,
+            'oversea_health_gain_rate': 0,
+            'oversea_armor': 0,
+            'oversea_crit_heal': 0,
+            'keep_fish_on_non_fever_crit': False,
+            'power_on_success_gain': 0,
+            'max_power_on_success': 0,
+            'oversea_power_on_attack': 0,
+            'over_100_crit_to_reward': 0,
+            'oversea_crit_to_reward': 0,
+            'oversea_damage_boost_below_50': 0,
+            'fail_rate_reward_bonus': False,
+            'oversea_damage_boost': 0,
+            'oversea_extra_attack_chance': 0,
         }
         for inst in self.get_equipped_skills():
             sk = fish_skills.get(inst['id'])
@@ -214,7 +275,7 @@ class FishPlayer(DictRedisData):
                     ctx['topic_power'][topic] = ctx['topic_power'].get(topic, 0) + val[lv-1]
                 elif key.startswith('oversea_') and isinstance(val, list):
                     v = val[lv-1]
-                    if key in ['oversea_damage_reduce', 'oversea_revive_percent', 'oversea_heal_percent', 'oversea_heal_reduce']:
+                    if key in ['oversea_damage_reduce', 'oversea_revive_percent', 'oversea_heal_percent', 'oversea_heal_reduce', 'oversea_health_gain_rate', 'oversea_armor', 'oversea_crit_heal']:
                         ctx[key] = max(ctx.get(key, 0), v)
                     else:
                         ctx[key] = ctx.get(key, 0) + v
@@ -241,12 +302,34 @@ class FishPlayer(DictRedisData):
                 ctx['regenerate_percent'] += eff['regenerate_percent'][lv-1]
             if 'fever_power' in eff:
                 ctx['fever_power'] = ctx.get('fever_power', 0) + eff['fever_power'][lv-1]
+            if 'extra_power_from_ground' in eff:
+                ctx['extra_power_from_ground'] = ctx.get('extra_power_from_ground', 0) + eff['extra_power_from_ground'][lv-1]
+            if 'crit_rate_from_grass' in eff:
+                ctx['crit_rate_from_grass'] = ctx.get('crit_rate_from_grass', 0) + eff['crit_rate_from_grass'][lv-1]
+            if 'extra_power_on_success' in eff:
+                ctx['power_on_success_gain'] += eff['extra_power_on_success'][lv-1]
+            if 'max_power_on_success' in eff:
+                ctx['max_power_on_success'] = max(ctx.get('max_power_on_success', 0), eff['max_power_on_success'][lv-1])
+            if 'oversea_power_on_attack' in eff:
+                ctx['oversea_power_on_attack'] += eff['oversea_power_on_attack'][lv-1]
+            if 'over_100_crit_to_reward' in eff:
+                ctx['over_100_crit_to_reward'] += eff['over_100_crit_to_reward'][lv-1]
+            if 'oversea_crit_to_reward' in eff:
+                ctx['oversea_crit_to_reward'] += eff['oversea_crit_to_reward'][lv-1]
+            if inst['id'] == 27:
+                ctx['keep_fish_on_non_fever_crit'] = True
+            if inst['id'] == 28:
+                ctx['fail_rate_reward_bonus'] = True
             if 'cool_down' in eff:
                 cd = eff['cool_down'][lv-1]
                 if 'cool_down' not in ctx:
                     ctx['cool_down'] = cd
                 else:
                     ctx['cool_down'] = min(ctx['cool_down'], cd)
+            if 'fairy_crit' in eff:
+                ctx['fairy_crit'] = ctx.get('fairy_crit', 0) + eff['fairy_crit'][lv-1]
+            if 'fighting_crit' in eff:
+                ctx['fighting_crit'] = ctx.get('fighting_crit', 0) + eff['fighting_crit'][lv-1]
         return ctx
     
 
@@ -351,6 +434,18 @@ class FishPlayer(DictRedisData):
         talent_8_level = self.get_talent_level(8)
         if talent_8_level > 0:
             crit_percent += 0.01 * talent_8_level * max(0, diff)
+
+        grass_talent_level = self.get_talent_level(3)
+        if grass_talent_level > 0:
+            grass_attr_percent = 5 * grass_talent_level
+            convert_ratio = skill_ctx.get('crit_rate_from_grass', 0)
+            if convert_ratio:
+                crit_percent += grass_attr_percent * convert_ratio / 100.0
+
+        if 'fairy' in fish.weakness:
+            crit_percent += skill_ctx.get('fairy_crit', 0)
+        if 'fighting' in fish.weakness:
+            crit_percent += skill_ctx.get('fighting_crit', 0)
 
         return crit_percent
 

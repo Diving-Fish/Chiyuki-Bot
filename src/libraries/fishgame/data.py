@@ -43,7 +43,7 @@ def buff_available(buff):
     return times > 0 and (expire == 0 or expire > time.time())
 
 def get_weakness(pokemon_name: str) -> List[str]:
-    pokemon = pokedex_showdown.get(translation_dict[pokemon_name].lower().replace('-', ''), {})
+    pokemon = pokedex_showdown.get(translation_dict.get(pokemon_name, '').lower().replace('-', '').replace(' ', ''), {})
     weaknesses = []
     for type in type_tbl:
         result = get_effectiveness_for_pokemon(pokemon, type)
@@ -121,6 +121,7 @@ class FishItem:
     craft_score_cost: int = 0
     # 购买/合成所需的条件，例如 {"mystic_shop": 1}
     require: dict = field(default_factory=dict)
+    prerequisite_item: int = 0  # 合成所需的前置装备ID
     # 配件专用字段
     stackable: bool = True
     id_range: int = 0  # 若为配件，表示可用的最大 id（闭区间）
@@ -149,6 +150,7 @@ class FishItem:
             self.craftby = temp
         self.craft_score_cost = obj.get('craft_score_cost', 0)
         self.require = obj.get('require', {})
+        self.prerequisite_item = obj.get('prerequisite_item', 0)
         self.stackable = obj.get('stackable', True)
         self.id_range = obj.get('id_range', 0)
         self.skill_point = obj.get('skill_point', obj.get('skill_point', 0))  # 兼容
@@ -189,6 +191,7 @@ class FishItem:
             "craftby": self.craftby,
             "craft_score_cost": self.craft_score_cost,
             "require": self.require,
+            "prerequisite_item": self.prerequisite_item,
             "stackable": self.stackable,
             "id_range": self.id_range,
             "skill_point": self.skill_point,
@@ -357,6 +360,24 @@ class Equipment:
     @property
     def items(self) -> list[FishItem]:
         return [self.rod, self.tool, self.accessory]
+
+    def _serialize_item(self, item: FishItem | None) -> dict | None:
+        return item.data if item else None
+
+    @property
+    def data(self) -> dict:
+        return {
+            'ids': {
+                'rod': self.__data.get('rod', 0),
+                'tool': self.__data.get('tool', 0),
+                'accessory': self.__data.get('accessory', 0),
+            },
+            'details': {
+                'rod': self._serialize_item(self.rod),
+                'tool': self._serialize_item(self.tool),
+                'accessory': self._serialize_item(self.accessory),
+            },
+        }
     
     @property
     def exp_bonus(self) -> float:

@@ -42,7 +42,9 @@ class OverseaBattle(DictRedisData):
             "ship_max_hp": 0,
             "current_round": 0,
             "max_rounds": 10,
-            "logs": []
+            "logs": [],
+            "player_damage": {},  # Dict[str, int]
+            "player_oversea_power": {}
         }
         super().__init__(token, default=default)
         
@@ -116,9 +118,9 @@ class OverseaBattle(DictRedisData):
         
         self.data['max_rounds'] = max(1, max_rounds)
         
-        base_hp_raw = 10000 * [1, 1.5, 2][self.data['difficulty'] - 1] * random.uniform(0.85, 1.15)
+        base_hp_raw = 10000 * [1, 2, 3][self.data['difficulty'] - 1] * random.uniform(0.85, 1.15)
         self.data['base_monster_hp'] = int(base_hp_raw * (1 + hp_bonus_pct))
-        self.data['monster_atk'] = [333, 500, 666][self.data['difficulty'] - 1] * random.uniform(0.85, 1.15) * (1 + atk_bonus_pct)
+        self.data['monster_atk'] = [333, 555, 777][self.data['difficulty'] - 1] * random.uniform(0.85, 1.15) * (1 + atk_bonus_pct)
         self.save()
 
     def start_battle(self, players: List['FishPlayer'], loadouts: Dict[str, int]):
@@ -156,6 +158,9 @@ class OverseaBattle(DictRedisData):
                     if 33 <= iid <= 40:
                         if player.bag.get_item_count(iid) < 10:
                             valid = False
+                    elif iid == 49:
+                        if player.bag.get_item_count(iid) < 1:
+                            valid = False
                 except:
                     pass
             
@@ -177,24 +182,28 @@ class OverseaBattle(DictRedisData):
         # 船体耐久
         base_ship_hp = 3000 * [1, 1.25, 1.5][self.data['port_level'] - 1]
         bonus_ship_hp_percent = 0.0
+        max_oversea_armor = 0
         
         self.data['players'] = [p.qq for p in players]
         self.data['loadouts'] = loadouts
+        self.data['player_damage'] = {str(p.qq): 0 for p in players}
+        self.data['player_oversea_power'] = {str(p.qq): 0 for p in players}
         
         for qq, item_id in loadouts.items():
             if str(item_id) == '310' or item_id == 310: # 洛奇亚的尾鳍
                 bonus_ship_hp_percent += 0.5
         
-        self.data['ship_max_hp'] = int(base_ship_hp * (1 + bonus_ship_hp_percent))
-        self.data['ship_hp'] = self.data['ship_max_hp']
-        
-        # 应用螺旋加速效果
+        # 应用螺旋加速效果 & 大地誓约护甲
         extra_rounds = 0
         for p in players:
             ctx = p.get_skill_context()
             extra_rounds += ctx.get('oversea_extra_round', 0)
+            max_oversea_armor = max(max_oversea_armor, ctx.get('oversea_armor', 0))
         
         self.data['max_rounds'] += extra_rounds
+
+        self.data['ship_max_hp'] = int(base_ship_hp * (1 + bonus_ship_hp_percent)) + max_oversea_armor
+        self.data['ship_hp'] = self.data['ship_max_hp']
 
         self.data['current_round'] = 0
         self.data['status'] = "fighting"
@@ -226,6 +235,9 @@ class OverseaBattle(DictRedisData):
         max_regen_percent = 0
         max_revive_percent = 0
         max_heal_reduce = 0
+        max_parasite_percent = 0
+        player_damage_map = self.data.setdefault('player_damage', {})
+        power_stack_map = self.data.setdefault('player_oversea_power', {})
         
         # 计算队长全队增伤 (Skill 15)
         team_damage_bonus = 0.0
@@ -234,11 +246,14 @@ class OverseaBattle(DictRedisData):
             captain = FishPlayer(captain_qq)
             captain_ctx = captain.get_skill_context()
             team_damage_bonus = captain_ctx.get('oversea_1st_damage_boost', 0) / 100.0
+            
+        monster_fish = Fish.get(self.data['monster_id'])
 
         for i, qq in enumerate(self.data['players']):
             player = FishPlayer(qq)
             player_name = player_names.get(str(qq), player.name)
             item_id = self.data['loadouts'].get(str(qq)) or self.data['loadouts'].get(int(qq))
+            qq_key = str(qq)
             
             # 收集技能上下文
             skill_ctx = player.get_skill_context()
@@ -248,17 +263,14 @@ class OverseaBattle(DictRedisData):
             max_regen_percent = max(max_regen_percent, skill_ctx.get('oversea_heal_percent', 0))
             max_revive_percent = max(max_revive_percent, skill_ctx.get('oversea_revive_percent', 0))
             heal_reduce = skill_ctx.get('oversea_heal_reduce', 0)
-            if int(item_id) == 38: # 雪山鱼叉
+            if item_id is not None and int(item_id) == 38: # 雪山鱼叉
                 heal_reduce *= 2
             max_heal_reduce = max(max_heal_reduce, heal_reduce)
+            max_parasite_percent = max(max_parasite_percent, skill_ctx.get('oversea_health_gain_rate', 0))
             
             if i != 0: # 非队长
                 total_member_reduce += skill_ctx.get('oversea_member_damage_reduce', 0)
 
-            # 基础攻击力计算 (需要斟酌)
-            # 暂时使用 player.power 作为基础
-            damage = player.power 
-            
             # 鱼叉加成
             # 鱼叉 ID 范围 33-40 (根据 fish_item.json)
             # 33: 精良鱼叉 (+30%)
@@ -288,6 +300,8 @@ class OverseaBattle(DictRedisData):
             
             # Skill 15: 队长全队增伤
             bonus += team_damage_bonus
+            if self.data['ship_max_hp'] > 0 and self.data['ship_hp'] <= self.data['ship_max_hp'] * 0.5:
+                bonus += skill_ctx.get('oversea_damage_boost_below_50', 0) / 100.0
             
             # 环境 Buff 加成
             env_buff = self.data.get('environment_buff', 0)
@@ -306,43 +320,12 @@ class OverseaBattle(DictRedisData):
                 elif env_buff == 6 and iid == 38: env_bonus += 0.5
                 elif env_buff == 7 and iid == 40: env_bonus += 1.0
             
-            # 暴击逻辑
-            skill_ctx = player.get_skill_context()
-            crit_percent = player.get_crit_percent(Fish.get(self.data['monster_id']), diff=player.power - self.data['monster_atk'])
+            extra_attacks = 1
+            extra_attack_chance = skill_ctx.get('oversea_extra_attack_chance', 0)
+            if extra_attack_chance > 0 and random.random() < extra_attack_chance / 100.0:
+                extra_attacks = 2
+                round_log.append(f"{player_name} 的【曼巴铁肘】发动，获得一次追加攻击！")
 
-            # 怪物 Buff: 106 反会心
-            for buff in self.data.get('monster_buffs', []):
-                if buff['id'] == 106:
-                    crit_percent -= buff['level'] * 20
-            
-            is_crit = False
-            crit_dmg_multiplier = 1.0
-            
-            if random.random() < min(crit_percent, 100) / 100:
-                is_crit = True
-                crit_rate = max(skill_ctx.get('crit_rate', 0), 150)
-                crit_dmg_multiplier = crit_rate / 100.0
-
-            # 伤害浮动 0.9 - 1.1
-            damage = int(damage * (1 + bonus + env_bonus) * random.uniform(0.9, 1.1))
-            
-            if is_crit:
-                damage = int(damage * crit_dmg_multiplier)
-            
-            # Skill 17: 强行 (增伤)，乘算
-            damage = int(damage * (1 + skill_ctx.get('oversea_damage_boost', 0) / 100.0))
-
-            # 怪物 Buff: 102 坚韧 (减伤)
-            damage_reduction_pct = 0.0
-            for buff in self.data.get('monster_buffs', []):
-                if buff['id'] == 102:
-                    damage_reduction_pct += buff['level'] * 0.1
-            
-            damage = int(damage * (1 - damage_reduction_pct))
-            damage = max(1, damage)
-            
-            total_damage += damage
-            
             weapon_name = "【鱼叉】"
             if item_id:
                 iid = int(item_id)
@@ -351,19 +334,76 @@ class OverseaBattle(DictRedisData):
                     if item:
                         weapon_name = f"【{item.name}】"
 
-            log_msg = f"{player_name} 使用 {weapon_name} "
-            if is_crit:
-                log_msg += f"触发会心一击（概率{crit_percent:.2f}%）！"
-            log_msg += f"造成了 {damage} 点伤害"
-            round_log.append(log_msg)
-            
-            # 怪物 Buff: 107 荆棘 (反伤)
-            for buff in self.data.get('monster_buffs', []):
-                if buff['id'] == 107:
-                    thorns_dmg = int(damage * buff['level'] * 0.1)
-                    if thorns_dmg > 0:
-                        self.data['ship_hp'] -= thorns_dmg
-                        round_log.append(f"受到荆棘反伤，船体扣除 {thorns_dmg} 点耐久")
+            for attack_index in range(extra_attacks):
+                bonus_power_stack = power_stack_map.get(qq_key, 0)
+                damage = player.power + bonus_power_stack
+
+                crit_percent = player.get_crit_percent(monster_fish, diff=player.power - self.data['monster_atk'])
+                for buff in self.data.get('monster_buffs', []):
+                    if buff['id'] == 106:
+                        crit_percent -= buff['level'] * 20
+
+                extra_damage_percent = 0.0
+                convert_ratio = skill_ctx.get('oversea_crit_to_reward', 0)
+                if convert_ratio > 0 and crit_percent > 100:
+                    extra_damage_percent = (crit_percent - 100) * convert_ratio / 100.0
+
+                is_crit = False
+                crit_dmg_multiplier = 1.0
+                effective_crit_percent = max(0.0, min(crit_percent, 100))
+                if random.random() < effective_crit_percent / 100:
+                    is_crit = True
+                    crit_rate = max(skill_ctx.get('crit_rate', 0), 150)
+                    crit_dmg_multiplier = crit_rate / 100.0
+
+                damage = int(damage * (1 + bonus + env_bonus) * random.uniform(0.9, 1.1))
+                if is_crit:
+                    damage = int(damage * crit_dmg_multiplier)
+                if extra_damage_percent > 0:
+                    damage = int(damage * (1 + extra_damage_percent / 100.0))
+                    round_log.append(f"{player_name} 的【雀跃之舞】将超额会心转化为 {extra_damage_percent:.2f}% 额外伤害")
+
+                damage = int(damage * (1 + skill_ctx.get('oversea_damage_boost', 0) / 100.0))
+
+                damage_reduction_pct = 0.0
+                for buff in self.data.get('monster_buffs', []):
+                    if buff['id'] == 102:
+                        damage_reduction_pct += buff['level'] * 0.1
+                damage = max(1, int(damage * (1 - damage_reduction_pct)))
+
+                player_damage_map[qq_key] = player_damage_map.get(qq_key, 0) + damage
+                max_stack = skill_ctx.get('max_power_on_success', 0)
+                stack_gain = skill_ctx.get('oversea_power_on_attack', 0)
+                if stack_gain > 0:
+                    new_stack = min(max_stack, bonus_power_stack + stack_gain)
+                    if new_stack > bonus_power_stack:
+                        power_stack_map[qq_key] = new_stack
+                        round_log.append(f"{player_name} 的【力量吸收】在港口积蓄了额外渔力（当前 +{new_stack}）")
+
+                total_damage += damage
+
+                log_msg = f"{player_name} 使用 {weapon_name} "
+                if attack_index > 0:
+                    log_msg = f"{player_name} 的追加攻击使用 {weapon_name} "
+                if is_crit:
+                    log_msg += f"触发会心一击（概率{crit_percent:.2f}%）！"
+                log_msg += f"造成了 {damage} 点伤害"
+                round_log.append(log_msg)
+
+                if is_crit:
+                    crit_heal_percent = skill_ctx.get('oversea_crit_heal', 0)
+                    if crit_heal_percent > 0 and self.data['ship_hp'] > 0:
+                        heal_amount = int(damage * crit_heal_percent / 100.0)
+                        if heal_amount > 0:
+                            self.data['ship_hp'] = min(self.data['ship_max_hp'], self.data['ship_hp'] + heal_amount)
+                            round_log.append(f"{player_name} 的【精准手术】触发，船体恢复 {heal_amount} 点耐久")
+
+                for buff in self.data.get('monster_buffs', []):
+                    if buff['id'] == 107:
+                        thorns_dmg = int(damage * buff['level'] * 0.06)
+                        if thorns_dmg > 0:
+                            self.data['ship_hp'] -= thorns_dmg
+                            round_log.append(f"受到荆棘反伤，船体扣除 {thorns_dmg} 点耐久")
             
         self.data['monster_hp'] -= total_damage
         round_log.append(f"本轮玩家共造成 {total_damage} 点伤害")
@@ -386,7 +426,7 @@ class OverseaBattle(DictRedisData):
         atk_bonus_pct = 0.0
         for buff in self.data.get('monster_buffs', []):
             if buff['id'] == 103:
-                atk_bonus_pct += buff['level'] * 0.1
+                atk_bonus_pct += buff['level'] * 0.2
                 
         monster_damage = int(self.data['monster_atk'] * (1 + atk_bonus_pct) * random.uniform(0.9, 1.1))
         
@@ -405,7 +445,7 @@ class OverseaBattle(DictRedisData):
         # 怪物 Buff: 104 再生
         for buff in self.data.get('monster_buffs', []):
             if buff['id'] == 104:
-                heal = int(self.data['monster_max_hp'] * buff['level'] * 0.05)
+                heal = int(self.data['monster_max_hp'] * buff['level'] * 0.05) * (1 - max_heal_reduce / 100.0)
                 if heal > 0:
                     self.data['monster_hp'] = min(self.data['monster_max_hp'], self.data['monster_hp'] + heal)
                     round_log.append(f"{self.data['monster_name']} 触发再生，恢复了 {heal} 点生命值")
@@ -435,6 +475,29 @@ class OverseaBattle(DictRedisData):
             if regen_hp > 0:
                 self.data['ship_hp'] = min(self.data['ship_max_hp'], self.data['ship_hp'] + regen_hp)
                 round_log.append(f"【再生力】发动，船体恢复了 {regen_hp} 点耐久")
+                
+        if max_parasite_percent > 0 and self.data['ship_hp'] > 0:
+            monster_pool = self.data.get('monster_max_hp', 0)
+            hp_multipliers = {1: 1.0, 2: 1.7, 3: 2.4, 4: 3.0}
+            multiplier = hp_multipliers.get(len(self.data['players']), 3.0)
+            parasite_dmg = int(monster_pool * max_parasite_percent / 100.0)
+            parasite_heal = int(parasite_dmg / multiplier)
+            if parasite_dmg > 0:
+                self.data['ship_hp'] = min(self.data['ship_max_hp'], self.data['ship_hp'] + parasite_heal)
+                self.data['monster_hp'] = max(0, self.data['monster_hp'] - parasite_dmg)
+                round_log.append(f"【寄生种子】发动，船体恢复了 {parasite_heal} 点耐久，并且对怪物造成了 {parasite_dmg} 点伤害")
+
+            if self.data['monster_hp'] <= 0:
+                self.data['monster_hp'] = 0
+                self.data['status'] = "success"        
+                self.data['logs'] += round_log
+                self.save()
+                return {
+                    "code": 1, 
+                    "message": f"战斗胜利！{self.data['monster_name']}已被击败！", 
+                    "logs": round_log,
+                    "status": "success"
+                }
             
         # 3. 检查回合数
         if self.data['current_round'] >= self.data['max_rounds']:
@@ -524,7 +587,7 @@ battle_buffs = {
         {
             'id': 103,
             'name': '狂暴',
-            'description': '怪物进入狂暴状态，造成的伤害提升 {level * 10}%'
+            'description': '怪物进入狂暴状态，造成的伤害提升 {level * 20}%'
         },
         {
             'id': 104,
@@ -544,7 +607,7 @@ battle_buffs = {
         {
             'id': 107,
             'name': '荆棘',
-            'description': '攻击怪物时，会反弹 {level * 10}% 的伤害给船体'
+            'description': '攻击怪物时，会反弹 {level * 6}% 的伤害给船体'
         }
     ],
     'bonus': [

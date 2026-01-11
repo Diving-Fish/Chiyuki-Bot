@@ -87,7 +87,12 @@ class FishGame(DictRedisData):
             return list(map(Fish.get, self.data['fever_fishes']))
         else:
             # 返回基础鱼池（来自fish_data_poke_ver.json的鱼，ID为1到len(fish_data_poke_ver)）
-            return [Fish.get(i) for i in range(1, len(fish_data_poke_ver) + 1) if Fish.get(i) is not None]
+            ret = []
+            for i in range(1, len(fish_data_poke_ver) + 1):
+                fish = Fish.get(i)
+                if fish is not None and fish.base_probability > 0:
+                    ret.append(fish)
+            return ret
 
     def refresh_buff(self):
         for buff_key in ['buff', 'avgp_buff']:
@@ -151,7 +156,7 @@ class FishGame(DictRedisData):
         count = 0
         for qq in qq_list:
             player = FishPlayer.try_get(qq)
-            if player is None:
+            if player is None or time.time() - player.updated_at > 86400:
                 continue
             # fever期间使用fever_power，否则使用普通power
             if self.is_fever:
@@ -159,7 +164,10 @@ class FishGame(DictRedisData):
             else:
                 p += player.power
             count += 1
-        self.__average_power = p / count + self.big_pot.power_boost
+        if count == 0:
+            self.__average_power = self.big_pot.power_boost
+        else:
+            self.__average_power = p / count + self.big_pot.power_boost
 
     @property
     def average_power(self):
@@ -263,6 +271,7 @@ class FishGame(DictRedisData):
         if fish is None:
             return None
         self.current_fish = fish
+        self.try_list = []
         self.fish_log.add_log(self.current_fish.id)
         self.save()
         self.leave_time = 5
@@ -284,6 +293,11 @@ class FishGame(DictRedisData):
         fish = self.current_fish
 
         if master_ball and player.bag.get_item(14):
+            if self.current_fish.rarity == 'UR':
+                return {
+                    "code": -4,
+                    "message": "大师球被弹开了！！"
+                }
             player.bag.pop_item(14)
         elif master_ball:
             return {
@@ -306,6 +320,7 @@ class FishGame(DictRedisData):
 
         # fever期间使用fever_power，否则使用普通power
         player_power = player.fever_power if self.is_fever else player.power
+        player_power += player.get_skill29_power_bonus()
         player_power += self.big_pot.power_boost + topic_power_bonus
         diff = player_power - fish.std_power
 
@@ -322,6 +337,8 @@ class FishGame(DictRedisData):
             if success_rate_bonus > 0:
                 success_rate = min(100, success_rate * (1 + success_rate_bonus / 100))
 
+        fail_prob = max(0.0, 1 - min(success_rate, 100) / 100.0)
+
         for i, buff in enumerate(player.data['buff']):
             if buff.get('time', 0) > 0:
                 player.data['buff'][i]['time'] -= 1
@@ -335,6 +352,20 @@ class FishGame(DictRedisData):
             if self.is_fever:
                 fishing_bonus *= 1 + self.ice_hole.fever_fishing_bonus
             value = int(fish.exp * fishing_bonus)
+            add_line = ''
+            if skill_ctx.get('fail_rate_reward_bonus'):
+                extra_value = int(value * fail_prob)
+                if extra_value > 0:
+                    value += extra_value
+                    add_line += f"\n【绝处逢生】发动，额外提升 {fail_prob * 100:.2f}% 渔获"
+            crit_percent = player.get_crit_percent(fish, diff)
+            convert_ratio = skill_ctx.get('over_100_crit_to_reward', 0)
+            if convert_ratio > 0 and crit_percent > 100:
+                extra_reward_percent = (crit_percent - 100) * convert_ratio / 100.0
+                if extra_reward_percent > 0:
+                    value = int(value * (1 + extra_reward_percent / 100.0))
+                    add_line += f"\n【雀跃之舞】发动，额外获得 {extra_reward_percent:.2f}% 渔获"
+
             # 经验/金币技能加成
             exp_multiplier = 1 + player.equipment.exp_bonus + skill_ctx.get('exp_rate', 0)/100
             gold_multiplier = 1 + player.equipment.gold_bonus + skill_ctx.get('gold_rate', 0)/100
@@ -342,10 +373,9 @@ class FishGame(DictRedisData):
             gold = int(value * gold_multiplier)
 
             # 看破（额外渔获）与超幸运倍率
-            add_line = ''
-            crit_percent = player.get_crit_percent(fish, diff)
 
-            is_crit = random.random() < min(crit_percent, 100) / 100
+            effective_crit_percent = max(0.0, min(crit_percent, 100))
+            is_crit = random.random() < effective_crit_percent / 100
             if is_crit:
                 crit_rate = max(skill_ctx.get('crit_rate', 0), 150)  # 默认 150%
                 extra = int(value * (crit_rate/100 - 1))
@@ -369,16 +399,24 @@ class FishGame(DictRedisData):
                 item = FishItem.get(drop['item_id'])
                 player.bag.add_item(item.id)
                 msg += f"\n获得了物品【{item.name}】"
+            if skill_ctx.get('power_on_success_gain', 0) > 0 and skill_ctx.get('max_power_on_success', 0) > 0:
+                new_stack = player.add_skill29_power_bonus(skill_ctx['power_on_success_gain'], skill_ctx['max_power_on_success'])
+                if new_stack > 0:
+                    msg += f"\n【力量吸收】蓄能提升至 +{new_stack} 渔力（30 分钟）"
             msg += player.handle_level_up()
             player.save()
             
             # fever期间鱼不会被清除，非fever期间捕获成功后清除
             if not self.is_fever:
-                # 技能18: 再生力 (概率留下鱼)
                 regenerate_percent = skill_ctx.get('regenerate_percent', 0)
-                if random.random() < regenerate_percent / 100:
+                keep_current_fish = False
+                if is_crit and skill_ctx.get('keep_fish_on_non_fever_crit'):
+                    keep_current_fish = True
+                    msg += f"\n由于【精准手术】的效果，{fish.name} 留了下来！"
+                elif random.random() < regenerate_percent / 100:
+                    keep_current_fish = True
                     msg += f"\n由于【再生力】的效果，{fish.name} 留了下来！"
-                else:
+                if not keep_current_fish:
                     self.current_fish = None
                     self.try_list = []
             
@@ -659,7 +697,7 @@ class FishGame(DictRedisData):
                 "code": -4,
                 "message": "购买此道具需要至少捕获100种不同的鱼"
             }
-        if good.id == 210 and len(player.fish_log.caught_set) < len(fish_data):
+        if good.id == 210 and len(player.fish_log.caught_set) < 32 + 84:
             return {
                 "code": -4,
                 "message": "购买此道具需要解锁所有图鉴"
@@ -1237,6 +1275,18 @@ class FishGame(DictRedisData):
                 "code": -2,
                 "message": msg
             }
+
+        prerequisite_id = getattr(item, 'prerequisite_item', 0)
+        if prerequisite_id:
+            owned_count = player.bag.get_item_count(prerequisite_id)
+            equipped_count = player.equipment.ids.count(prerequisite_id)
+            if max(owned_count, equipped_count) <= 0:
+                prereq_item = FishItem.get(str(prerequisite_id))
+                prereq_name = prereq_item.name if prereq_item else f"物品{prerequisite_id}"
+                return {
+                    "code": -7,
+                    "message": f"缺少前置装备：需要先获得 {prereq_name}"
+                }
         
         # 统计需要的材料
         material_requirements = {}
@@ -1567,6 +1617,11 @@ class FishGame(DictRedisData):
             player.bag.add_item(reward_id, 1)
             item_name = fish_item[reward_id].name if reward_id in fish_item else f"Item {reward_id}"
             rewards.append(f"{item_name} x1")
+
+        if self.port.level >= 1:
+            if player.bag.get_item_count(49) < 1:
+                player.bag.add_item(49, 1)
+                rewards.append("港口通行证 x1")
             
         player.save()
         
@@ -1646,21 +1701,37 @@ class FishGame(DictRedisData):
         monster_drops = []
         if monster_id in fish_data:
             monster_drops = fish_data[monster_id].drops
+        player_damage_map = battle.data.get('player_damage', {})
         
         for qq in battle.data['players']:
             player = FishPlayer(qq)
             player_name = battle.data.get('player_names', {}).get(str(qq), player.name)
+            player_skill_ctx = player.get_skill_context()
             
             # Variance 0.9 - 1.1
             variance = random.uniform(0.9, 1.1)
             
             if success:
-                exp = int(base_exp * (1 + bonus_exp_pct) * variance)
-                gold = int(base_gold * (1 + bonus_gold_pct) * variance)
-                drop_count = int(base_drop_count * (1 + bonus_drop_pct) * variance)
+                player_bonus_drop_pct = 0
+                player_bonus_exp_pct = 0
+                player_bonus_gold_pct = 0
+                if battle.data.get('loadouts', {}).get(str(qq)) == 49:
+                    player_bonus_drop_pct = 1
+                    player_bonus_exp_pct = 1
+                    player_bonus_gold_pct = 1
+
+                exp = int(base_exp * (1 + bonus_exp_pct + player_bonus_exp_pct) * variance)
+                gold = int(base_gold * (1 + bonus_gold_pct + player_bonus_gold_pct) * variance)
+                extra_gold = 0
+                dmg_rate = player_skill_ctx.get('oversea_dmg_gold_rate', 0)
+                if dmg_rate > 0:
+                    player_total_damage = player_damage_map.get(str(qq), 0)
+                    extra_gold = int(player_total_damage * dmg_rate / 100)
+                total_gold = gold + extra_gold
+                drop_count = round(base_drop_count * (1 + bonus_drop_pct + player_bonus_drop_pct) * variance)
                 
                 player.data['exp'] += exp
-                player.data['gold'] += gold
+                player.data['gold'] += total_gold
                 
                 # Drops
                 got_drops = {}
@@ -1688,7 +1759,9 @@ class FishGame(DictRedisData):
                 token_count = 1 + bonus_token
                 player.bag.add_item(token_id, token_count)
                 
-                msg = f"获得 {exp} 经验, {gold} 金币, {FishItem.get(token_id).name} x{token_count}"
+                msg = f"获得 {exp} 经验, {total_gold} 金币, {FishItem.get(token_id).name} x{token_count}"
+                if extra_gold > 0:
+                    msg += f"（点石成金额外 +{extra_gold}）"
                 if got_drops:
                     drop_msg = []
                     for iid, count in got_drops.items():
@@ -1707,20 +1780,22 @@ class FishGame(DictRedisData):
                 logs.append(f"{player_name} 获得 {exp} 经验 (进度 {progress*100:.1f}%){player.handle_level_up()}")
             
             # 扣除道具
-            if 205 not in battle.data.get('bonus_buffs', []):
-                item_id = battle.data['loadouts'].get(str(qq)) or battle.data['loadouts'].get(int(qq))
-                if item_id:
-                    item_id = int(item_id)
-                    deduct_count = 0
-                    if item_id == 310:
-                        deduct_count = 1
-                    elif 33 <= item_id <= 40:
-                        deduct_count = 10
-                    
-                    if deduct_count > 0:
-                        player.bag.pop_item(item_id, deduct_count)
+            is_deduct = 205 not in battle.data.get('bonus_buffs', [])
+            item_id = battle.data['loadouts'].get(str(qq)) or battle.data['loadouts'].get(int(qq))
+            if item_id:
+                item_id = int(item_id)
+                deduct_count = 0
+                if item_id == 310:
+                    deduct_count = 1 if is_deduct else 0
+                elif 33 <= item_id <= 40:
+                    deduct_count = 10 if is_deduct else 0
+                elif item_id == 49:
+                    deduct_count = 1
+                
+                if deduct_count > 0:
+                    player.bag.pop_item(item_id, deduct_count)
 
-                player.save()
+            player.save()
             
         battle.data['logs'].extend(logs)
         battle.save()
@@ -1765,8 +1840,8 @@ class FishGame(DictRedisData):
             player.save()
             
         max_count = self.port.level
-        if self.group_id in (663516277,):
-            max_count += 1
+        # if self.group_id in (663516277,):
+        #     max_count += 1
 
         if player.data.get('raid_count', 0) >= max_count:
             return {"code": -3, "message": f"今日讨伐次数已耗尽（上限 {max_count} 次）"}
@@ -1817,7 +1892,7 @@ class FishGame(DictRedisData):
             return {"code": -3, "message": "物品不存在"}
             
         # 检查类型 (鱼叉 33-40, 尾鳍 310)
-        valid_ids = [33, 34, 35, 36, 37, 38, 39, 40, 310]
+        valid_ids = [33, 34, 35, 36, 37, 38, 39, 40, 310, 49]
         if item.id not in valid_ids:
             return {"code": -5, "message": "该物品无法在讨伐中使用"}
             

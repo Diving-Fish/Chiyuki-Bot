@@ -612,10 +612,10 @@ class ForgeShop(BuildingBase):
         
     @property
     def description(self):
-        return "熔炉工坊，可以制造宝石，并且在渔具上镶嵌宝石，提升渔具的属性。"
+        return "熔炉工坊，解锁更高级的装备合成。"
     
     def level_effect_desc(self, level):
-        return f"可制造宝石种类：第{level}阶段\n渔具镶嵌槽位：+{level}个"
+        return f"装备合成：第{level}阶段"
     
     def get_level_materials(self, level: int) -> list[ItemRequest]:
         materials = {

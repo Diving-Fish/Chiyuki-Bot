@@ -6,6 +6,7 @@ import math
 from io import BytesIO
 import aiohttp
 import time
+from string import Formatter
 
 
 def get_item_type_text(item_type):
@@ -599,9 +600,24 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
                 # 直接添加省略号
                 draw.text((x + 80, current_text_y + 18), 
                          last_line + "...", fill=(248, 248, 242), font=small_font)
+
+        section_y = current_text_y + (40 if len(wrapped_desc) <= 2 else 60)
+
+        prerequisite_id = getattr(item, 'prerequisite_item', 0)
+        if prerequisite_id:
+            prerequisite_item = FishItem.get(str(prerequisite_id))
+            prerequisite_name = prerequisite_item.name if prerequisite_item else f"ID {prerequisite_id}"
+            bag_count = player_bag.get_item_count(prerequisite_id) if player_bag else 0
+            equipped_count = player.equipment.ids.count(prerequisite_id) if player else 0
+            has_prerequisite = bag_count + equipped_count > 0
+            status_text = "已拥有" if has_prerequisite else "缺失"
+            status_color = (80, 250, 123) if has_prerequisite else (255, 85, 85)
+            draw.text((x + 10, section_y), f"前置装备: {prerequisite_name}", fill=(248, 248, 242), font=small_font, anchor="lt")
+            draw.text((x + item_width - 15, section_y), status_text, fill=status_color, font=small_font, anchor="rt")
+            section_y += 20
         
         # 合成材料标题
-        material_title_y = current_text_y + (40 if len(wrapped_desc) <= 2 else 60)
+        material_title_y = section_y
         draw.text((x + 10, material_title_y), "合成材料:", fill=(189, 147, 249), font=regular_font)
         
         # 统计所需材料
@@ -627,7 +643,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
                     count_color = (255, 85, 85)   # 红色 - 不足
                 
                 draw.text((x + 15, material_y), material_text, 
-                         fill=(248, 248, 242), font=small_font)
+                         fill=(248, 248, 242), font=small_font, anchor="lt")
                 draw.text((x + item_width - 15, material_y), count_text, 
                          fill=count_color, font=small_font, anchor="rt")
                 
@@ -663,7 +679,7 @@ def create_craft_panel(craftable_items: list[FishItem], player_bag: Backpack, pl
                 score_color = (255, 85, 85)   # 红色 - 不足
             
             draw.text((x + 15, material_y), score_text, 
-                     fill=(248, 248, 242), font=small_font)
+                     fill=(248, 248, 242), font=small_font, anchor="lt")
             draw.text((x + item_width - 15, material_y), current_score_text, 
                      fill=score_color, font=small_font, anchor="rt")
     
@@ -1466,4 +1482,189 @@ def create_talent_panel(player: FishPlayer, game: FishGame = None):
 
     # Footer
     draw.text((width/2, height - 15), "天赋系统", fill=(98, 114, 164), font=regular_font, anchor="mm")
+    return image
+
+
+# ---------- Skill List Helpers ----------
+_skill_formatter = Formatter()
+_SKILL_COLOR_TEXT = (248, 248, 242)
+_SKILL_COLOR_DIM = (140, 140, 150)
+_SKILL_COLOR_HIGHLIGHT = (80, 250, 123)
+
+
+def _format_effect_value(value):
+    if isinstance(value, float):
+        text = f"{value:.2f}"
+        text = text.rstrip('0').rstrip('.')
+        return text
+    return str(value)
+
+
+def _build_detail_segments(template: str, effect_dict: dict, level: int):
+    if not template:
+        return []
+    segments = []
+    for literal, field_name, _, _ in _skill_formatter.parse(template):
+        if literal:
+            segments.append((literal, _SKILL_COLOR_TEXT))
+        if not field_name:
+            continue
+        value = effect_dict.get(field_name)
+        if isinstance(value, list) and value:
+            highlight_idx = min(max(level, 1) - 1, len(value) - 1)
+            for idx, val in enumerate(value):
+                color = _SKILL_COLOR_HIGHLIGHT if idx == highlight_idx else _SKILL_COLOR_DIM
+                segments.append((_format_effect_value(val), color))
+                if idx < len(value) - 1:
+                    segments.append(('/', _SKILL_COLOR_TEXT))
+        elif value is not None:
+            segments.append((_format_effect_value(value), _SKILL_COLOR_TEXT))
+        else:
+            segments.append((f"{{{field_name}}}", _SKILL_COLOR_TEXT))
+    return segments if segments else [(template, _SKILL_COLOR_TEXT)]
+
+
+def _measure_segments_height(segments: list[tuple[str, tuple]], max_width: int, font: ImageFont.FreeTypeFont,
+                             line_height: int, draw: ImageDraw.ImageDraw) -> int:
+    if not segments:
+        return line_height
+    lines = 1
+    current_width = 0
+    for text, _ in segments:
+        pointer = 0
+        while pointer < len(text):
+            remaining_width = max_width - current_width
+            if remaining_width <= 0:
+                lines += 1
+                current_width = 0
+                remaining_width = max_width
+            chunk = text[pointer:]
+            if not chunk:
+                break
+            while draw.textlength(chunk, font=font) > remaining_width and len(chunk) > 1:
+                chunk = chunk[:-1]
+            if not chunk:
+                lines += 1
+                current_width = 0
+                continue
+            current_width += draw.textlength(chunk, font=font)
+            pointer += len(chunk)
+            if current_width >= max_width and pointer < len(text):
+                lines += 1
+                current_width = 0
+    return lines * line_height
+
+
+def _draw_segments(draw: ImageDraw.ImageDraw, segments: list[tuple[str, tuple]], start_x: int, y: int, max_width: int,
+                   font: ImageFont.FreeTypeFont, line_height: int) -> int:
+    if max_width <= 0:
+        return y + line_height
+    current_x = start_x
+    current_y = y
+    max_x = start_x + max_width
+    for text, color in segments:
+        pointer = 0
+        while pointer < len(text):
+            if current_x >= max_x:
+                current_y += line_height
+                current_x = start_x
+            chunk = text[pointer:]
+            if not chunk:
+                break
+            remaining_width = max_x - current_x
+            while draw.textlength(chunk, font=font) > remaining_width and len(chunk) > 1:
+                chunk = chunk[:-1]
+            if not chunk:
+                current_y += line_height
+                current_x = start_x
+                continue
+            draw.text((current_x, current_y), chunk, fill=color, font=font)
+            current_x += draw.textlength(chunk, font=font)
+            pointer += len(chunk)
+    return current_y + line_height
+
+
+def create_skill_list_image(skills: list[dict], game: FishGame):
+    width = 800
+    padding = 20
+    line_height = 30
+    header_height = 80
+    font_path = "src/static/poke/LXGWWenKai-Regular.ttf"
+    title_font = ImageFont.truetype(font_path, 32)
+    name_font = ImageFont.truetype(font_path, 24)
+    desc_font = ImageFont.truetype(font_path, 20)
+    detail_font = ImageFont.truetype(font_path, 18)
+
+    dummy_img = Image.new("RGB", (1, 1))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    text_max_width = width - padding * 2 - 40
+
+    skill_sections = []
+    show_oversea = game.port.level > 0
+    for sk in skills:
+        sk_obj = get_skill(sk['id'])
+        if not sk_obj:
+            continue
+        current_level = max(1, min(sk['level'], sk_obj.max_level))
+        normal_segments = _build_detail_segments(sk_obj.detail, sk_obj.effect, current_level)
+        normal_height = _measure_segments_height(normal_segments, text_max_width, detail_font, line_height, dummy_draw)
+
+        oversea_segments = []
+        oversea_height = 0
+        has_oversea = bool(show_oversea and sk_obj.detail_oversea)
+        if has_oversea:
+            oversea_segments = _build_detail_segments(sk_obj.detail_oversea, sk_obj.effect, current_level)
+            oversea_height = _measure_segments_height(oversea_segments, text_max_width, detail_font, line_height, dummy_draw)
+
+        skill_sections.append({
+            'obj': sk_obj,
+            'level': current_level,
+            'normal_segments': normal_segments,
+            'normal_height': normal_height,
+            'has_oversea': has_oversea,
+            'oversea_segments': oversea_segments,
+            'oversea_height': oversea_height,
+        })
+
+    total_height = header_height
+    for data in skill_sections:
+        total_height += 40  # header line
+        total_height += data['normal_height']
+        if data['has_oversea']:
+            total_height += 10  # spacing before label
+            total_height += line_height  # label line
+            total_height += data['oversea_height']
+        total_height += padding * 2
+
+    if total_height == header_height:
+        total_height += 60
+
+    image = Image.new("RGB", (width, total_height), (40, 42, 54))
+    draw = ImageDraw.Draw(image)
+    draw.text((width/2, 40), "技能列表", fill=(248, 248, 242), font=title_font, anchor="mm")
+
+    current_y = header_height
+    for data in skill_sections:
+        sk_obj = data['obj']
+        current_level = data['level']
+
+        draw.text((padding, current_y), f"{sk_obj.name} (Lv.{current_level})", fill=(189, 147, 249), font=name_font)
+        desc_width = dummy_draw.textlength(sk_obj.desc, font=desc_font)
+        draw.text((width - padding - desc_width, current_y + 4), sk_obj.desc, fill=(139, 233, 253), font=desc_font)
+        current_y += 40
+
+        current_y = _draw_segments(draw, data['normal_segments'], padding + 20, current_y, text_max_width,
+                                   detail_font, line_height)
+
+        if data['has_oversea']:
+            current_y += 10
+            draw.text((padding, current_y), "港口效果", fill=_SKILL_COLOR_TEXT, font=desc_font)
+            current_y += line_height
+            current_y = _draw_segments(draw, data['oversea_segments'], padding + 20, current_y, text_max_width,
+                                       detail_font, line_height)
+
+        current_y += padding
+        draw.line([(padding, current_y), (width - padding, current_y)], fill=(98, 114, 164), width=1)
+        current_y += padding
+
     return image
