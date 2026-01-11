@@ -8,8 +8,12 @@ from src.libraries.image import image_to_base64
 from src.data_access.plugin_manager import plugin_manager
 from src.libraries.fishgame.fishgame import *
 from src.libraries.fishgame.fishgame_util import *
+from src.libraries.fishgame.runtime import fish_games
+from src.routes.fishgame import has_online_clients, online_clients_group_list, push_web_event
 import re
 import time
+import asyncio
+from nonebot.log import logger
 
 
 __plugin_meta = {
@@ -50,17 +54,45 @@ async def __group_checker(event: Event):
 
 from nonebot_plugin_apscheduler import scheduler
 
-fish_games = {}
+
+async def get_group_lists(qq_only=False) -> list[int]:
+    groups = set()
+    bot = get_bot()
+    group_list = await bot.get_group_list()
+    for group in group_list:
+        groups.add(group['group_id'])
+    if qq_only:
+        return list(groups)
+    for gid in online_clients_group_list():
+        groups.add(int(gid))
+    return list(groups)
+
+
+async def dispatch_notifications(group_id: int, qq_message: str | None = None, web_event: dict | None = None):
+    """Send QQ message and/or web push event based on availability."""
+    bot = get_bot()
+    if qq_message and group_id in (await get_group_lists(qq_only=True)):
+        try:
+            await bot.send_msg(message_type="group", group_id=group_id, message=qq_message)
+        except Exception as exc:
+            logger.warning("Failed to send QQ message to group %s: %s", group_id, exc)
+    if web_event and has_online_clients(str(group_id)):
+        payload = dict(web_event)
+        payload.setdefault("game", str(group_id))
+        payload.setdefault("timestamp", int(time.time()))
+        try:
+            await push_web_event(str(group_id), payload)
+        except Exception as exc:
+            logger.warning("Failed to push web event for group %s: %s", group_id, exc)
 
 @scheduler.scheduled_job("cron", minute="*/1", jitter=30)
 async def try_spawn_fish():
-    group_list = await get_bot().get_group_list()
+    group_list = await get_group_lists()
     # print(group_list)
     # 如果不在 8 到 24 点则不尝试生成
-    if 1 <= time.localtime().tm_hour < 8:
-        return
-    for obj in group_list:
-        group = obj['group_id']
+    # if 1 <= time.localtime().tm_hour < 8:
+    #     return
+    for group in group_list:
         if not plugin_manager.get_enable(group, __plugin_meta["name"]):
             continue
         if group not in fish_games:
@@ -71,28 +103,56 @@ async def try_spawn_fish():
         game.update_average_power(qq_list)
         # print(f'{group} 尝试刷鱼')
         if game.current_fish is not None:
+            current_fish = game.current_fish
             leave = game.count_down()
             if leave:
-                await get_bot().send_msg(message_type="group", group_id=group, message=f"鱼离开了..." if not game.is_fever else '鱼群散去了！')
+                leave_msg = "鱼离开了..." if not game.is_fever else '鱼群散去了！'
+                await dispatch_notifications(
+                    group,
+                    leave_msg,
+                    {
+                        "type": "fish_leave",
+                        "fish": current_fish.data if current_fish else None,
+                        "reason": "timeout",
+                        "isFever": game.is_fever,
+                    }
+                )
         if game.current_fish is None:     
             fish: Fish = game.spawn_fish()
             if fish is not None:
                 if fish.rarity == 'UR':
-                    await get_bot().send_msg(message_type="group", group_id=group, message=f"{fish.name}【{fish.rarity}】 █████！\n使用【████】指███████获████！")
+                    spawn_msg = f"{fish.name}【{fish.rarity}】 █████！\n使用【████】指███████获████！"
                 else:
-                    await get_bot().send_msg(message_type="group", group_id=group, message=f"{fish.name}【{fish.rarity}】 出现了！\n使用【捕鱼】指令进行捕获吧！")
+                    spawn_msg = f"{fish.name}【{fish.rarity}】 出现了！\n使用【捕鱼】指令进行捕获吧！"
+                await dispatch_notifications(
+                    group,
+                    spawn_msg,
+                    {
+                        "type": "spawn",
+                        "fish": fish.data,
+                        "rarity": fish.rarity,
+                        "isFever": game.is_fever,
+                    }
+                )
         
         # 检查港口怪物生成
         if game.check_oversea_spawn():
             battle = game.oversea_battle
-            await get_bot().send_msg(message_type="group", group_id=group, message=f"警报！海上发现了巨大的身影！\n{battle.data['monster_name']} 正在接近！\n请各位渔者前往【港口】进行讨伐！")
+            alert_msg = f"警报！海上发现了巨大的身影！\n{battle.data['monster_name']} 正在接近！\n请各位渔者前往【港口】进行讨伐！"
+            await dispatch_notifications(
+                group,
+                alert_msg,
+                {
+                    "type": "oversea_spawn",
+                    "battle": battle.data,
+                }
+            )
 
 # 港口战斗推进 (每3分钟)
 @scheduler.scheduled_job("cron", minute="*/3")
 async def process_oversea_battle():
-    group_list = await get_bot().get_group_list()
-    for obj in group_list:
-        group = obj['group_id']
+    group_list = await get_group_lists()
+    for group in group_list:
         if not plugin_manager.get_enable(group, __plugin_meta["name"]):
             continue
         if group not in fish_games:
@@ -113,7 +173,16 @@ async def process_oversea_battle():
             elif res['status'] == 'fail':
                 msg += f"\n\n讨伐失败... {res['message']}"
                 
-            await get_bot().send_msg(message_type="group", group_id=group, message=msg)
+            await dispatch_notifications(
+                group,
+                msg,
+                {
+                    "type": "oversea_battle_update",
+                    "status": res.get('status'),
+                    "logs": res.get('logs'),
+                    "round": game.oversea_battle.data.get('current_round') if game.oversea_battle else None,
+                }
+            )
 
 
 @scheduler.scheduled_job("cron", hour=19, minute=30)
@@ -131,7 +200,16 @@ async def test_if_group_come():
         if random.random() < rate:
             fish_game.trigger_fever()
             minute = (fish_game.data['fever_expire'] - time.time()) // 60
-            await get_bot().send_msg(message_type="group", group_id=group, message=f"大量的鱼群聚集了起来！\n接下来{minute}分钟内，鱼将不会逃走，并且每个人都可以捕获一次！\n但与此同时，你的等级和渔具的效果似乎受到了削弱……")
+            fever_msg = f"大量的鱼群聚集了起来！\n接下来{int(minute)}分钟内，鱼将不会逃走，并且每个人都可以捕获一次！\n但与此同时，你的等级和渔具的效果似乎受到了削弱……"
+            await dispatch_notifications(
+                group,
+                fever_msg,
+                {
+                    "type": "fever_start",
+                    "duration": int(fish_game.data['fever_expire'] - time.time()),
+                    "expireAt": fish_game.data['fever_expire'],
+                }
+            )
 
 
 panel = on_command('面板', rule=__group_checker)
@@ -245,34 +323,12 @@ async def _(event: Event):
         ]))
         return
     
-    lines = ["当前生效技能："]
-    for skill in skills:
-        sk_id = skill['id']
-        lv = skill['level']
-        sk_obj = get_skill(sk_id)
-        if not sk_obj:
-            continue
-        lines.append(f" - {sk_obj.name} Lv{lv} | {sk_obj.desc}")
-        lines.append(sk_obj.get_detail_for_level(lv))
-        
-        if game.port.level > 0 and sk_obj.detail_oversea:
-            fmt_values = {}
-            for k, v in sk_obj.effect.items():
-                if isinstance(v, list):
-                    if len(v) >= lv:
-                        fmt_values[k] = v[lv-1]
-                    else:
-                        fmt_values[k] = v[-1]
-                else:
-                    fmt_values[k] = v
-            try:
-                lines.append(f"[港口] {sk_obj.detail_oversea.format(**fmt_values)}")
-            except:
-                pass
-
+    img = create_skill_list_image(skills, game)
     await skill_list_cmd.send(Message([
         MessageSegment.reply(event.message_id),
-        MessageSegment.text('\n'.join(lines))
+        MessageSegment("image", {
+            "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
+        })
     ]))
 
 catch = on_command('捕鱼', aliases={'大师球'}, rule=__group_checker)
@@ -286,11 +342,35 @@ async def _(event: Event, message: Message = EventMessage()):
         fish_games[group] = FishGame(group)
     game: FishGame = fish_games[group]
     player = FishPlayer(str(event.user_id))
-    res = game.catch_fish(player, str(message) == '大师球')
+    master_ball = str(message) == '大师球'
+    fish_before = game.current_fish.data if game.current_fish else None
+    res = game.catch_fish(player, master_ball)
     await catch.send(Message([
         MessageSegment.reply(event.message_id),
         MessageSegment.text(res['message'])
     ]))
+
+    if fish_before:
+        sender = getattr(event, 'sender', None)
+        display = ''
+        if sender:
+            display = getattr(sender, 'card', '') or getattr(sender, 'nickname', '')
+        display = display or player.data.get('name') or str(event.user_id)
+        await push_web_event(
+            str(group),
+            {
+                "type": "catch",
+                "by": str(event.user_id),
+                "display": display,
+                "fish": fish_before,
+                "code": res.get('code'),
+                "message": res.get('message'),
+                "success": res.get('code') == 0,
+                "fishStillPresent": game.current_fish is not None,
+                "isFever": game.is_fever,
+                "source": "qq",
+            }
+        )
 
 draw = on_command('单抽', aliases={'十连', '百连', '千连'}, rule=__group_checker)
 
@@ -545,8 +625,22 @@ async def _(event: Event, message: Message = CommandArg()):
         fish_games[group] = FishGame(group)
     game: FishGame = fish_games[group]
     fish: Fish = game.force_spawn_fish(fish_id)
-    await get_bot().send_msg(message_type="group", group_id=group, message=f"{fish.name}【{fish.rarity}】 出现了！\n使用【捕鱼】指令进行捕获吧！")
-
+    if fish is not None:
+        if fish.rarity == 'UR':
+            spawn_msg = f"{fish.name}【{fish.rarity}】 █████！\n使用【████】指███████获████！"
+        else:
+            spawn_msg = f"{fish.name}【{fish.rarity}】 出现了！\n使用【捕鱼】指令进行捕获吧！"
+        await dispatch_notifications(
+            group,
+            spawn_msg,
+            {
+                "type": "spawn",
+                "fish": fish.data,
+                "rarity": fish.rarity,
+                "isFever": game.is_fever,
+            }
+        )
+    
 force_fever = on_command('强制fever')
 @force_fever.handle()
 async def _(event: Event, message: Message = CommandArg()):

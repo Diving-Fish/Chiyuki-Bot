@@ -1,3 +1,4 @@
+import time
 import redis
 import json
 
@@ -43,7 +44,17 @@ class ListRedisData(RedisData):
 
 
 class DictRedisData(RedisData):
-    def __init__(self, key, default={}):
+    def __init__(self, key, default=None):
+        if default is None:
+            default = {}
         super().__init__(key, lambda s : json.loads(s), lambda dct : json.dumps(dct), default=default)
         if type(self.data) != type({}):
             raise Exception(f"{self.__dict__} is not a dict")
+        
+    def save(self, *args, ex=None, px=None, nx=False, xx=False):
+        self.data['updated_at'] = int(time.time())
+        super().save(*args, ex=ex, px=px, nx=nx, xx=xx)
+
+    @property
+    def updated_at(self):
+        return self.data.get('updated_at', 0)

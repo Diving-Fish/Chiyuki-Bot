@@ -220,3 +220,18 @@ def format_player_ratings(ratings: PlayerRatings) -> str:
         #     result.append(f"{entry.format_name}: Elo={entry.elo}{gxe_str}{glicko_str}")
     
     return "\n".join(result)
+
+def get_player_tier_scores(ratings: PlayerRatings) -> Dict[str, int]:
+    """
+    获取玩家在各个对战格式中的 tier 分数
+    
+    Args:
+        ratings (PlayerRatings): 玩家天梯数据
+        
+    Returns:
+        Dict[str, int]: 格式名称到 tier 分数的映射
+    """
+    tier_scores = {}
+    for entry in ratings.official_ladder + ratings.unofficial_ladder:
+        tier_scores[entry.format_name] = entry.elo
+    return tier_scores

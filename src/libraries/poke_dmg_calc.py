@@ -166,6 +166,7 @@ class Field:
     def __init__(self):
         self.weather: Optional[str] = None
         self.terrain: Optional[str] = None
+        self.gameType: str = 'Singles'
 
     def json(self):
         body = {}
@@ -173,16 +174,22 @@ class Field:
             body['weather'] = self.weather
         if self.terrain:
             body['terrain'] = self.terrain.replace(' ter', '')
+        if self.gameType:
+            body['gameType'] = self.gameType
         return body
 
 class DamageCalc:
-    def __init__(self, message):
+    def __init__(self, message, preset='singles'):
         self.message = message
         self.args = self.parse_arguments(message)
         self.attacker = Pokemon()
         self.defender = Pokemon()
         self.current = self.attacker
         self.field = Field()
+        if preset == 'vgc':
+            self.field.gameType = 'Doubles'
+            self.attacker.level = 50
+            self.defender.level = 50
         self.move = ''
         self.z_move = False
         self.move_crit = False
@@ -245,7 +252,13 @@ class DamageCalc:
     
     def parse_word(self, text: str):
         text_lower = text.lower()
-        if text in abilitie_vals:
+        if text in ('单打', '单体'):
+            self.field.gameType = 'Singles'
+            return True
+        elif text in ('双打', '群体'):
+            self.field.gameType = 'Doubles'
+            return True
+        elif text in abilitie_vals:
             self.current.attributes['ability'] = text
             return True
         elif text in item_vals:

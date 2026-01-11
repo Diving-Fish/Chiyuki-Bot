@@ -257,5 +257,122 @@
         "detail": "你的属性会心（冰）将对水属性效果绝佳。",
         "detail_oversea": "港口战斗时，敌方的治疗效果降低 {oversea_heal_reduce}%，当你使用冰川鱼叉时翻倍。多个斯卡蒂之触效果不会叠加，取最高效果",
         "max_level": 1
+    },
+    {
+        "id": 22,
+        "name": "妖精之力",
+        "desc": "对于有妖精弱点的鱼，会心率提升。",
+        "effect": {
+            "fairy_crit": [10, 20, 50]
+        },
+        "score": 0,
+        "detail": "对于有妖精弱点的鱼，会心率提升 {fairy_crit}%。",
+        "detail_oversea": "港口战斗时，对于有妖精弱点的敌人，会心率提升 {fairy_crit}%。",
+        "max_level": 3
+    },
+    {
+        "id": 23,
+        "name": "点石成金",
+        "desc": "你捕鱼获得的经验降低，但是金币提升。",
+        "effect": {
+            "exp_rate": [-10, -20, -30],
+            "gold_rate": [20, 40, 60],
+            "oversea_dmg_gold_rate": [100, 200, 300]
+        },
+        "score": 0,
+        "detail": "你捕鱼获得的经验降低 {exp_rate}%，但是金币提升 {gold_rate}%。",
+        "detail_oversea": "港口战斗结束时，若胜利，额外获得等同于造成伤害 {oversea_dmg_gold_rate}% 的金币",
+        "max_level": 3
+    },
+    {
+        "id": 24,
+        "name": "寄生种子",
+        "desc": "你获得通常会心率，概率等于你属性会心（草）概率的一部分。",
+        "effect": {
+            "crit_rate_from_grass": [40, 80, 120],
+            "oversea_health_gain_rate": [0.5, 1, 1.5]
+        },
+        "score": 4,
+        "detail": "你获得通常会心率，概率等于你属性会心（草）概率的 {crit_rate_from_grass}%。",
+        "detail_oversea": "港口战斗时，你每回合吸收怪物总生命值的 {oversea_health_gain_rate}% 作为生命值回复（多人情况下回复的生命值随人数减少，比例等同于怪物多人血量增幅的倒数），多个寄生种子效果不会叠加，取最高效果",
+        "max_level": 3
+    },
+    {
+        "id": 25,
+        "name": "大地誓约",
+        "desc": "你获得渔力，等同于你属性会心（地面）概率的一部分。",
+        "effect": {
+            "extra_power_from_ground": [60, 120, 200],
+            "oversea_armor": [1000, 2000, 3000]
+        },
+        "score": 4,
+        "detail": "你获得渔力，等同于你属性会心（地面）概率的 {extra_power_from_ground} 倍。",
+        "detail_oversea": "港口战斗时，船体的最大生命值增加{oversea_armor}点，多个大地誓约效果不会叠加，取最高效果",
+        "max_level": 3
+    },
+    {
+        "id": 26,
+        "name": "曼巴铁肘",
+        "desc": "对于有格斗弱点的鱼，会心率提升。",
+        "effect": {
+            "oversea_damage_boost": [5, 10],
+            "oversea_extra_attack_chance": [20, 40],
+            "fighting_crit": [10, 20]
+        },
+        "score": 0,
+        "detail": "对于有格斗弱点的鱼，会心率提升 {fighting_crit}%。",
+        "detail_oversea": "港口战斗时，总伤害提升 {oversea_damage_boost}%，对于有格斗弱点的敌人，会心率提升 {fighting_crit}%。此外，有 {oversea_extra_attack_chance}% 概率额外攻击一次。",
+        "max_level": 2
+    },
+    {
+        "id": 27,
+        "name": "精准手术",
+        "desc": "非鱼群状态下触发会心时，一定会将鱼留下。",
+        "effect": {
+            "oversea_crit_heal": [20, 40, 60]
+        },
+        "score": 0,
+        "detail": "非鱼群状态下触发会心时，一定会将鱼留下。",
+        "detail_oversea": "港口战斗时，触发会心时，回复相当于此次伤害 {oversea_crit_heal}% 的船体耐久。",
+        "max_level": 3
+    },
+    {
+        "id": 28,
+        "name": "绝处逢生",
+        "desc": "提升渔获量，数值等于你当次捕鱼的失败概率。",
+        "effect": {
+            "oversea_damage_boost_below_50": [50]
+        },
+        "score": 0,
+        "detail": "提升渔获量，数值等于你当次捕鱼的失败概率。",
+        "detail_oversea": "港口战斗时，当船体耐久低于 50% 时，总伤害提升 {oversea_damage_boost_below_50}%",
+        "max_level": 1
+    },
+    {
+        "id": 29,
+        "name": "力量吸收",
+        "desc": "你每次捕鱼成功时，在 30 分钟内提升一定渔力。",
+        "effect": {
+            "extra_power_on_success": [5, 10, 15],
+            "max_power_on_success": [30, 60, 90],
+            "oversea_power_on_attack": [10, 20, 30]
+        },
+        "score": 4,
+        "detail": "你每次捕鱼成功时，在 30 分钟内提升 {extra_power_on_success} 渔力，最多叠加 {max_power_on_success} 渔力。",
+        "detail_oversea": "港口战斗时，每次攻击时提升 {oversea_power_on_attack} 渔力，最多叠加 {max_power_on_success} 渔力。",
+        "max_level": 3
+    },
+    {
+        "id": 30,
+        "name": "雀跃之舞",
+        "desc": "你超过 100% 的会心率会转化为额外的渔获量。",
+        "effect": {
+            "over_100_crit_to_reward": [50, 100, 150],
+            "oversea_crit_to_reward": [50, 100, 150]
+        },
+        "score": 4,
+        "detail": "你超过 100% 的会心率会转化为额外的渔获量，转换比例为 {over_100_crit_to_reward}%。",
+        "detail_oversea": "港口战斗时，超过 100% 的会心率会转化为额外的伤害，转换比例为 {oversea_crit_to_reward}%。",
+        "max_level": 3
     }
 ]

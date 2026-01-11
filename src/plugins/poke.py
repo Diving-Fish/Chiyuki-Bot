@@ -12,7 +12,7 @@ from src.libraries.pokemon_img import get_image, get_not_every_effective_types, 
 from src.libraries.showdown_data_fetch import get_tier_score, parse_pokemon_showdown_user_html, format_player_ratings
 from src.libraries.poke_dmg_calc import DamageCalc, types_cn, types, species_en2zh, abilities_en2zh
 from src.data_access.plugin_manager import plugin_manager
-from src.data_access.redis import redis_global
+from src.data_access.redis import redis_global, RedisData
 from private.libraries.poke_match.match10v1 import try_update_tricolor
 import os
 import requests
@@ -82,7 +82,9 @@ async def _(event: Event, message: Message = CommandArg()):
 道具直接写道具名字在宝可梦前面
 不会自动猜测特性，特性请写在宝可梦前面
 
-天气、场地、状态等参数可以直接写在宝可梦前面'''
+天气、场地、状态等参数可以直接写在宝可梦前面
+
+您可以使用 【伤害计算 vgc】或【伤害计算 singles】来快速切换对战模式'''
         await dmgcalc.send(Message([
             MessageSegment("image", {
                 "file": f"base64://{str(image_to_base64(text_to_image(s)), encoding='utf-8')}"
@@ -90,7 +92,19 @@ async def _(event: Event, message: Message = CommandArg()):
         ]))
         return
     try:
-        result = await DamageCalc(argv).execute()
+        key = f"grp{getattr(event, 'group_id')}" or str(event.user_id)
+        mode = RedisData(f"dmgcalc_mode_{key}")
+        if argv.strip() == "vgc":
+            mode.data = "vgc"
+            mode.save()
+            await dmgcalc.send("已切换至 VGC 模式")
+            return
+        elif argv.strip() == "singles":
+            mode.data = "singles"
+            mode.save()
+            await dmgcalc.send("已切换至 Singles 模式")
+            return
+        result = await DamageCalc(argv, preset=mode.data).execute()
         await dmgcalc.send(Message([
             MessageSegment.reply(event.message_id),
             MessageSegment.text(result)
@@ -184,6 +198,8 @@ query_showdown = on_command("查ps", rule=__group_checker)
 
 @query_showdown.handle()
 async def _(event: Event, message: Message = CommandArg()):
+    await query_showdown.send("千雪提醒：报名参加比赛的选手请不要偷懒哦")
+    return
     gid = getattr(event, "group_id", 0)
     user_id = str(event.user_id)
     if gid != 0:

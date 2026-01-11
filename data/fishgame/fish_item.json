@@ -410,6 +410,18 @@
         "require": {"forge_shop": 2}
     },
     {
+        "id": 49,
+        "name": "港口通行证",
+        "rarity": 3,
+        "description": "如果携带这个道具赢得港口战斗，则额外获得 100% 战斗奖励"
+    },
+    {
+        "id": 50,
+        "name": "创世神之心",
+        "description": "你成功以凡人之躯刺穿了创世神的身体，正如《创世纪》。",
+        "rarity": 5
+    },
+    {
         "id": 101,
         "name": "机械抓手",
         "rarity": 1,
@@ -918,6 +930,13 @@
         "price": 1900
     },
     {
+        "id": 350,
+        "name": "鬼之宝玉",
+        "rarity": 4,
+        "description": "散发着不详气息的宝玉。",
+        "price": 1900
+    },
+    {
         "id": 298,
         "name": "一箱金币",
         "rarity": 4,
@@ -1241,6 +1260,545 @@
             "2": 1
         },
         "require": {"forge_shop": 1}
+    },
+    {
+        "id": 420,
+        "name": "钢铁炉心",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 110,
+        "craftby": [
+            47, 47, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 412,
+        "skill": {
+            "7": 2,
+            "10": 2,
+            "17": 2,
+            "27": 1
+        }
+    },
+    {
+        "id": 421,
+        "name": "冰河绘卷",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 100,
+        "craftby": [
+            46, 46, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 413,
+        "skill": {
+            "6": 2,
+            "21": 1,
+            "11": 1,
+            "30": 1
+        }
+    },
+    {
+        "id": 422,
+        "name": "钓竿：浪",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 130,
+        "craftby": [
+            41, 41, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 414,
+        "ignore_fever": true,
+        "skill": {
+            "1": 3,
+            "14": 2,
+            "13": 2
+        }
+    },
+    {
+        "id": 423,
+        "name": "荆棘之笼",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 140,
+        "craftby": [
+            43, 43, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 415,
+        "ignore_fever": true,
+        "skill": {
+            "3": 2,
+            "24": 1,
+            "18": 2
+        }
+    },
+    {
+        "id": 424,
+        "name": "迈达斯之手",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 60,
+        "craftby": [
+            48, 48, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 416,
+        "skill": {
+            "8": 2,
+            "23": 2,
+            "13": 3
+        }
+    },
+    {
+        "id": 425,
+        "name": "疾风之翼",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 100,
+        "craftby": [
+            45, 45, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 417,
+        "skill": {
+            "5": 2,
+            "15": 2,
+            "10": 2
+        }
+    },
+    {
+        "id": 426,
+        "name": "掘沙钻头",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 150,
+        "craftby": [
+            42, 42, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 418,
+        "skill": {
+            "2": 2,
+            "20": 2,
+            "12": 1,
+            "25": 1
+        }
+    },
+    {
+        "id": 427,
+        "name": "奥义·升龙",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 140,
+        "craftby": [
+            44, 44, 207, 207, 207
+        ],
+        "craft_score_cost": 50000,
+        "require": {"forge_shop": 2},
+        "prerequisite_item": 419,
+        "skill": {
+            "4": 2,
+            "26": 1,
+            "17": 3,
+            "19": 2
+        }
+    },
+    {
+        "id": 428,
+        "name": "海洋之心",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 130,
+        "craftby": [
+            41, 41, 41, 41, 41,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 420,
+        "skill": {
+            "1": 4,
+            "19": 3,
+            "28": 1,
+            "30": 1
+        }
+    },
+    {
+        "id": 429,
+        "name": "冰霜之心",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 120,
+        "craftby": [
+            46, 46, 46, 46, 46,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 420,
+        "skill": {
+            "6": 3,
+            "10": 3,
+            "11": 3,
+            "21": 1
+        }
+    },
+    {
+        "id": 430,
+        "name": "《星夜》",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 110,
+        "craftby": [
+            45, 45, 45, 45, 45,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 421,
+        "skill": {
+            "5": 3,
+            "23": 1,
+            "30": 1,
+            "13": 4
+        }
+    },
+    {
+        "id": 431,
+        "name": "大荒芜经",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 130,
+        "craftby": [
+            43, 43, 43, 43, 43,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 421,
+        "skill": {
+            "3": 3,
+            "29": 3,
+            "24": 2,
+            "10": 2
+        }
+    },
+    {
+        "id": 432,
+        "name": "钓竿：玄",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 160,
+        "craftby": [
+            42, 42, 42, 42, 42,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 422,
+        "ignore_fever": true,
+        "skill": {
+            "2": 3,
+            "25": 2,
+            "1": 5,
+            "11": 3
+        }
+    },
+    {
+        "id": 433,
+        "name": "钓竿：银",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 150,
+        "craftby": [
+            47, 47, 47, 47, 47,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 422,
+        "ignore_fever": true,
+        "skill": {
+            "7": 3,
+            "27": 2,
+            "10": 4,
+            "11": 1
+        }
+    },
+    {
+        "id": 434,
+        "name": "空想具现化",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 140,
+        "craftby": [
+            48, 48, 48, 48, 48,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 423,
+        "ignore_fever": true,
+        "skill": {
+            "8": 3,
+            "22": 2,
+            "29": 1,
+            "11": 4
+        }
+    },
+    {
+        "id": 435,
+        "name": "黑石牢狱",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "鱼群出现时不受到渔力减弱的效果影响",
+        "power": 150,
+        "craftby": [
+            42, 42, 42, 42, 42,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 423,
+        "ignore_fever": true,
+        "skill": {
+            "2": 3,
+            "25": 3,
+            "23": 1,
+            "15": 2
+        }
+    },
+    {
+        "id": 436,
+        "name": "炎 拳",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 150,
+        "craftby": [
+            44, 44, 44, 44, 44,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 424,
+        "skill": {
+            "4": 3,
+            "26": 2,
+            "29": 2,
+            "23": 1
+        }
+    },
+    {
+        "id": 437,
+        "name": "漩 涡",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 140,
+        "craftby": [
+            41, 41, 41, 41, 41,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 424,
+        "skill": {
+            "1": 6,
+            "28": 1,
+            "26": 1,
+            "30": 1
+        }
+    },
+    {
+        "id": 438,
+        "name": "辐能光翼",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 120,
+        "craftby": [
+            47, 47, 47, 47, 47,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 425,
+        "skill": {
+            "7": 3,
+            "20": 1,
+            "27": 3,
+            "10": 4
+        }
+    },
+    {
+        "id": 439,
+        "name": "巨树之叶",
+        "rarity": 5,
+        "type": "tool",
+        "equipable": true,
+        "description": "",
+        "power": 150,
+        "craftby": [
+            43, 43, 43, 43, 43,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 425,
+        "skill": {
+            "3": 3,
+            "24": 2,
+            "18": 3,
+            "12": 2
+        }
+    },
+    {
+        "id": 440,
+        "name": "炼狱钻头",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 180,
+        "craftby": [
+            44, 44, 44, 44, 44,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 426,
+        "skill": {
+            "4": 3,
+            "20": 2,
+            "17": 5,
+            "10": 2
+        }
+    },
+    {
+        "id": 441,
+        "name": "玄冰镐",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 170,
+        "craftby": [
+            46, 46, 46, 46, 46,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 426,
+        "skill": {
+            "6": 3,
+            "1": 5,
+            "20": 1,
+            "21": 1,
+            "23": 2
+        }
+    },
+    {
+        "id": 442,
+        "name": "暗龙夺魂手",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 140,
+        "craftby": [
+            48, 48, 48, 48, 48,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 427,
+        "skill": {
+            "8": 3,
+            "22": 1,
+            "29": 2,
+            "13": 4,
+            "14": 4
+        }
+    },
+    {
+        "id": 443,
+        "name": "握握手握握双手",
+        "rarity": 5,
+        "type": "rod",
+        "equipable": true,
+        "description": "",
+        "power": 160,
+        "craftby": [
+            45, 45, 45, 45, 45,
+            210, 210,
+            207, 207, 207, 207, 207, 207, 207, 207
+        ],
+        "craft_score_cost": 200000,
+        "require": {"forge_shop": 3},
+        "prerequisite_item": 427,
+        "skill": {
+            "5": 3,
+            "30": 2,
+            "11": 3
+        }
     },
     {
         "id": 1001,
