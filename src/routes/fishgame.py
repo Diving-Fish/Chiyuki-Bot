@@ -280,6 +280,7 @@ def _build_pool_snapshot(game_obj) -> dict:
         "isFever": game_obj.is_fever,
         "averagePower": round(game_obj.average_power, 1),
         "currentFish": game_obj.current_fish.data if game_obj.current_fish else None,
+        "currentFishIsShiny": game_obj.current_fish_is_shiny if game_obj.current_fish else False,
         "feverRemaining": fever_remaining,
         "glowBuffs": glow_info,
         "rarityBuffs": rarity_buffs,

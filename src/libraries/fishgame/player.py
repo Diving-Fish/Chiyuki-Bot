@@ -11,7 +11,10 @@ class FishPlayer(DictRedisData):
         token = f'fishgame_user_data_{md5(str(qq)) if hash == "" else hash}'
         super().__init__(token, default=FishPlayer.default_user_data())
         self.bag = Backpack(self.data['bag'], self)
-        self.fish_log = FishLog(self.data['fish_log'])
+        # 确保兼容旧玩家数据
+        if 'shiny_fish_log' not in self.data:
+            self.data['shiny_fish_log'] = []
+        self.fish_log = FishLog(self.data['fish_log'], self.data['shiny_fish_log'])
         self.equipment = Equipment(self.data['equipment'], self)
         # 配件实例数据： { item_id(str): {"skills": [{id, level}, ...], "base_id": int} }
         if 'accessory_meta' not in self.data:
@@ -41,6 +44,7 @@ class FishPlayer(DictRedisData):
             "gold": 0,
             "score": 0,
             "fish_log": [],
+            "shiny_fish_log": [],  # 异色鱼记录
             "bag": {"1": 1},  # 修改为字典格式: {item_id: count}
             "buff": [],
             "equipment": {},

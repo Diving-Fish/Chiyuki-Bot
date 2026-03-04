@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import nonebot
 from nonebot.adapters.onebot.v11 import Adapter, Message, MessageSegment
+from nonebot.adapters.qq import Adapter as QQAdapter
 from nonebot import require, get_bot, get_driver
 
 # Custom your logger
@@ -22,6 +23,7 @@ app = nonebot.get_asgi()
 
 driver = nonebot.get_driver()
 driver.register_adapter(Adapter)
+driver.register_adapter(QQAdapter)
 driver.config.help_text = {}
 
 import src.quart

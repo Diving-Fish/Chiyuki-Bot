@@ -189,7 +189,7 @@ async def apex_auto_update():
                     await asyncio.sleep(1)
             for gid, messages in group_message_dict.items():
                 if plugin_manager.get_enable(gid, __plugin_meta["name"]):
-                    await get_bot().send_msg(message_type="group", group_id=gid, message='\n'.join(messages))
+                    await get_bot(str(get_driver().config.private_bot)).send_msg(message_type="group", group_id=gid, message='\n'.join(messages))
             t = int((time.time_ns() - t) / 1e9)
             logger.success("APEX 数据自动更新完成")
             await asyncio.sleep(120 - t)

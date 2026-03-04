@@ -1,16 +1,19 @@
 from typing import Optional
-from nonebot import on_command, on_notice, get_driver, get_bot
+from nonebot import on_command, on_message, on_notice, get_driver, get_bot
 from nonebot.log import logger
 from nonebot.params import CommandArg, EventMessage, Arg, ArgPlainText
 from nonebot.typing import T_State
 from nonebot.matcher import Matcher
+from nonebot.adapters import Message as BaseMessage
 from nonebot.adapters.onebot.v11 import Message, Event, Bot, MessageSegment
+from nonebot.adapters.qq import GroupAtMessageCreateEvent
 from nonebot.exception import IgnoredException
 from nonebot.adapters.onebot.v11.exception import ActionFailed
 from nonebot.message import event_preprocessor, run_postprocessor
 from src.libraries.image import *
-from src.data_access.redis import NumberRedisData
+from src.data_access.redis import NumberRedisData, DictRedisData, RedisData
 import time
+import string
 import os
 import uuid
 import aiohttp
@@ -242,7 +245,7 @@ async def get_group_members_by_gid_impl(event: Event, message: Message = Command
 
     try:
         group_id = int(str(message).strip())
-        qq_list = await get_bot().get_group_member_list(group_id=group_id)
+        qq_list = await get_bot(str(get_driver().config.private_bot)).get_group_member_list(group_id=group_id)
         qq_list = [str(qq['user_id']) for qq in qq_list]
         await get_group_members_by_gid.send(f"群成员列表：\n{'\n'.join(qq_list)}")
     except Exception as e:
@@ -336,3 +339,42 @@ async def got_location(location: str = ArgPlainText(), args: Message = EventMess
         raise e
         # await get_pic.finish(f"转换图片失败：{str(e)}")
         return
+    
+
+bind_open_group = on_command('绑定群组')
+@bind_open_group.handle()
+async def _(event: GroupAtMessageCreateEvent, message: BaseMessage = CommandArg()):
+    data = DictRedisData('open_helper_group_map')
+    if event.group_openid in data.data:
+        await bind_open_group.send("该群组已绑定，请勿重复绑定")
+        return
+    data.data[event.group_openid] = int(str(message))
+    data.save()
+    await bind_open_group.send("绑定成功")
+
+
+bind_open_user = on_command('绑定用户', aliases={'绑定QQ', '绑定qq'})
+@bind_open_user.handle()
+async def _(event: GroupAtMessageCreateEvent, message: BaseMessage = CommandArg()):
+    random_key = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+    temp_data = RedisData(f'open_helper_user_binding_temp_{random_key}')
+    temp_data.data = event.author.member_openid
+    temp_data.save(ex=300)
+    await bind_open_user.send("请复制这条消息的所有内容再次发送，即可完成绑定：" + random_key + "Cy1BtbD")
+
+
+bind_open_user_check = on_message()
+@bind_open_user_check.handle()
+async def _(event: Event, message: Message = EventMessage()):
+    if message.extract_plain_text().endswith("Cy1BtbD"):
+        if str(event.user_id) in ('2854203586', '3889923077'):
+            return
+        temp_data = RedisData(f'open_helper_user_binding_temp_{message.extract_plain_text()[-7-32:-7]}')
+        if temp_data.data == '' or temp_data.data is None:
+            return
+        openid = temp_data.data
+        user_map_data = DictRedisData('open_helper_user_map')
+        user_map_data.data[openid] = int(str(event.user_id))
+        user_map_data.save()
+        temp_data.delete()
+        await bind_open_user_check.send("绑定成功！")

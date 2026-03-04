@@ -16,6 +16,7 @@ class FishGame(DictRedisData):
         self.fish_log = FishLog(self.data["fish_log"])
         self.__average_power = 0
         self.current_fish: Fish = None
+        self.current_fish_is_shiny: bool = False  # 当前鱼是否为异色
         self.try_list = []
         self.leave_time = 0
         self.init_buildings()
@@ -183,6 +184,7 @@ class FishGame(DictRedisData):
         self.leave_time -= 1
         if self.leave_time == 0:
             self.current_fish = None
+            self.current_fish_is_shiny = False
             self.try_list = []
             return True
         return False
@@ -250,6 +252,9 @@ class FishGame(DictRedisData):
         for i in range(len(prob_dist)):
             if r < prob_dist[i]:
                 self.current_fish = fish_data_local[i]
+                # 异色判定：根据七天神像等级
+                shiny_rate = self.seven_statue.shiny_rate
+                self.current_fish_is_shiny = random.random() < shiny_rate
                 self.fish_log.add_log(self.current_fish.id)
                 self.save()
                 self.leave_time = 2 if self.is_fever else 5
@@ -271,6 +276,7 @@ class FishGame(DictRedisData):
         if fish is None:
             return None
         self.current_fish = fish
+        self.current_fish_is_shiny = False  # 强制刷鱼默认非异色
         self.try_list = []
         self.fish_log.add_log(self.current_fish.id)
         self.save()
@@ -344,7 +350,14 @@ class FishGame(DictRedisData):
                 player.data['buff'][i]['time'] -= 1
 
         if random.random() < success_rate / 100:
-            player.fish_log.add_log(fish.id)
+            # 异色判定：如果刷出来就是异色，直接使用；否则再次判定
+            if self.current_fish_is_shiny:
+                is_shiny = True
+            else:
+                shiny_rate = self.seven_statue.shiny_rate
+                is_shiny = random.random() < shiny_rate
+            
+            player.fish_log.add_log(fish.id, is_shiny=is_shiny)
             fishing_bonus = 1
             for buff in player.buff:
                 fishing_bonus += buff.get('fishing_bonus', 0)
@@ -383,12 +396,22 @@ class FishGame(DictRedisData):
                 gold += int(extra * gold_multiplier)
                 add_line += f"\n会心触发（概率{crit_percent:.2f}%）！额外获得渔获倍率 {crit_rate}%"
 
+            # 异色宝可梦：经验和金币翻4倍
+            if is_shiny:
+                exp *= 4
+                gold *= 4
+
             player.data['exp'] += exp
             player.data['gold'] += gold
+            
+            # 构建捕获消息
+            shiny_mark = "✨异色✨" if is_shiny else ""
             if exp == gold:
-                msg = f"捕获 {fish.name}【{fish.rarity}】 成功（成功率{success_rate:.2f}%），获得了 {exp} 经验和金币"
+                msg = f"捕获 {shiny_mark}{fish.name}【{fish.rarity}】 成功（成功率{success_rate:.2f}%），获得了 {exp} 经验和金币"
             else:
-                msg = f"捕获 {fish.name}【{fish.rarity}】 成功（成功率{success_rate:.2f}%），获得了 {exp} 经验和 {gold} 金币"
+                msg = f"捕获 {shiny_mark}{fish.name}【{fish.rarity}】 成功（成功率{success_rate:.2f}%），获得了 {exp} 经验和 {gold} 金币"
+            if is_shiny:
+                msg += "\n🎉恭喜！你捕获了异色宝可梦！经验和金币翻4倍！"
             msg += add_line
             if len(fish.drops) > 0:
                 rd = random.random()
@@ -418,11 +441,13 @@ class FishGame(DictRedisData):
                     msg += f"\n由于【再生力】的效果，{fish.name} 留了下来！"
                 if not keep_current_fish:
                     self.current_fish = None
+                    self.current_fish_is_shiny = False
                     self.try_list = []
             
             return {
                 "code": 0,
-                "message": msg
+                "message": msg,
+                "is_shiny": is_shiny
             }
         else:
             fail_base_exp = 1
@@ -475,6 +500,7 @@ class FishGame(DictRedisData):
                 }
                 if random.random() < flee_rate[fish.rarity] + len(self.try_list) * 0.1:
                     self.current_fish = None
+                    self.current_fish_is_shiny = False
                     self.try_list = []
                     msg += f"\n{fish.name}【{fish.rarity}】逃走了..."
             
@@ -797,7 +823,8 @@ class FishGame(DictRedisData):
             s += '\n🔥 鱼群期间：等级和渔具提供的渔力削弱、鱼不会逃跑、可多人捕获、无法投放饵料'
         
         if self.current_fish is not None:
-            s += f'\n当前池子中有{'一群' if self.is_fever else '一条'} {self.current_fish.name}【{self.current_fish.rarity}】！'
+            shiny_mark = "✨异色✨" if self.current_fish_is_shiny else ""
+            s += f'\n当前池子中有{'一群' if self.is_fever else '一条'} {shiny_mark}{self.current_fish.name}【{self.current_fish.rarity}】！'
         
         # 非fever期间显示buff信息，fever期间自动拥有黄金鱼料buff
         if not self.is_fever:
@@ -1066,6 +1093,16 @@ class FishGame(DictRedisData):
             if cost_gold > 0:
                 msg += f"，消耗金币 {cost_gold}"
             return {"code": 0, "message": msg}
+        
+        elif item.id in (31, 32):
+            player.bag.pop_item(item.id)
+            player.bag.add_item(item.id - 1, 2)
+            player.save()
+            return {
+                "code": 0,
+                "message": f"成功将 {item.name} 分解为 2 个 {FishItem.get(str(item.id - 1)).name}！"
+            }
+
         elif item.id == 208: # 饰品溶解液
             try:
                 accessory_id = int(extra_args.pop(0))
@@ -1753,15 +1790,19 @@ class FishGame(DictRedisData):
                     player.bag.add_item(jewel_id, diff)
                     got_drops[jewel_id] = got_drops.get(jewel_id, 0) + diff
                 
-                # Tokens
-                # 30: 海洋之证, 31: 风暴之证, 32: 最强之证
-                token_id = 30 + (diff - 1)
-                token_count = 1 + bonus_token
-                player.bag.add_item(token_id, token_count)
-                
-                msg = f"获得 {exp} 经验, {total_gold} 金币, {FishItem.get(token_id).name} x{token_count}"
+                msg = f"获得 {exp} 经验, {total_gold} 金币"
                 if extra_gold > 0:
                     msg += f"（点石成金额外 +{extra_gold}）"
+                for i in range(diff):
+                    # Tokens
+                    # 30: 海洋之证, 31: 风暴之证, 32: 最强之证
+                    token_name = FishItem.get(30 + i).name
+                    if i == diff - 1 and bonus_token > 0:
+                        token_count = 2
+                    else:
+                        token_count = 1
+                    msg += f", {token_name} x{token_count}"
+                    player.bag.add_item(30 + i, token_count)
                 if got_drops:
                     drop_msg = []
                     for iid, count in got_drops.items():

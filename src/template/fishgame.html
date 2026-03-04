@@ -246,7 +246,9 @@
                 <div class="card-head">
                   <div>
                     <p class="eyebrow">池子状态</p>
-                    <h4 style="margin:4px 0">{{ gameDashboard.pool && gameDashboard.pool.currentFish ? gameDashboard.pool.currentFish.name : '当前池子' }}</h4>
+                    <h4 style="margin:4px 0">
+                      <span v-if="gameDashboard.pool && gameDashboard.pool.currentFishIsShiny">✨</span>{{ gameDashboard.pool && gameDashboard.pool.currentFish ? gameDashboard.pool.currentFish.name : '当前池子' }}
+                    </h4>
                   </div>
                   <span class="pill" :class="{ 'pill--fever': gameDashboard.pool && gameDashboard.pool.isFever }">
                     {{ gameDashboard.pool && gameDashboard.pool.isFever ? 'Fever' : '常规' }}
@@ -315,7 +317,7 @@
                     </v-btn>
                   </div>
                   <p class="pool-footer" v-if="gameDashboard.pool && gameDashboard.pool.currentFish">
-                    当前：{{ gameDashboard.pool.currentFish.name }}【{{ gameDashboard.pool.currentFish.rarity }}】
+                    当前：<span v-if="gameDashboard.pool.currentFishIsShiny">✨异色✨</span>{{ gameDashboard.pool.currentFish.name }}【{{ gameDashboard.pool.currentFish.rarity }}】
                   </p>
                   <p class="pool-footer" v-else>
                     等待下一次刷鱼...
@@ -1347,7 +1349,7 @@
       methods: {
         async fetchSkills() {
           try {
-            const r = await axios.get('/web/fishgame/api/skills');
+            const r = await axios.get('/fishgame/api/skills');
             if (r.data?.code === 0 && Array.isArray(r.data.skills)) {
               const next = {};
               r.data.skills.forEach((sk) => {
@@ -1391,7 +1393,7 @@
         },
         connectWs() {
           try {
-            const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/web/fishgame/ws';
+            const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/fishgame/ws';
             const ws = new WebSocket(url);
             ws.addEventListener('open', () => {
               ws.send(JSON.stringify({ type: 'identify', game: this.credentials.game, user: this.credentials.user }));
@@ -1420,7 +1422,9 @@
             case 'spawn': {
               const fishName = d.fish?.name || '未知鱼类';
               const rarity = d.fish?.rarity ? `【${d.fish.rarity}】` : '';
-              this.appendLog(`刷鱼：${fishName}${rarity} 已出现`, ts);
+              const shinyMark = d.isShiny ? '✨异色✨' : '';
+              const shinyNote = d.isShiny ? ' 🌟异色宝可梦！捕获后经验和金币翻4倍！' : '';
+              this.appendLog(`刷鱼：${shinyMark}${fishName}${rarity} 已出现${shinyNote}`, ts);
               if (!isHistory) {
                 this.refreshDashboard();
               }
@@ -1437,7 +1441,8 @@
             case 'catch': {
               const fishName = d.fish?.name || '未知鱼类';
               const who = d.display || d.by || '未知玩家';
-              this.appendLog(`捕获：${who} ${d.message}`, ts);
+              const shinyMark = d.isShiny ? '✨' : '';
+              this.appendLog(`捕获：${who} ${shinyMark}${d.message}`, ts);
               if (!isHistory) {
                 this.refreshDashboard();
               }
@@ -1469,7 +1474,7 @@
         },
         async refreshShop() {
           try {
-            const r = await axios.get('/web/fishgame/api/shop/list');
+            const r = await axios.get('/fishgame/api/shop/list');
             if (r.data.code === 0) this.shopItems = r.data.items;
           } catch (e) { console.error(e) }
         },
@@ -1479,7 +1484,7 @@
           }
           this.statusLoading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/dashboard', {
+            const r = await axios.post('/fishgame/api/dashboard', {
               game: this.credentials.game,
               user: this.credentials.user,
             });
@@ -1514,7 +1519,7 @@
         async buyItem(it) {
           if (!confirm(`确认购买 ${it.name} 吗？`)) return;
           try {
-            const r = await axios.post('/web/fishgame/api/shop/buy', {
+            const r = await axios.post('/fishgame/api/shop/buy', {
               game: this.credentials.game,
               user: this.credentials.user,
               item_id: it.id,
@@ -1531,7 +1536,7 @@
         },
         async refreshPlayer() {
           try {
-            const r = await axios.post('/web/fishgame/api/player', { game: this.credentials.game, user: this.credentials.user });
+            const r = await axios.post('/fishgame/api/player', { game: this.credentials.game, user: this.credentials.user });
             if (r.data.code === 0) {
               this.player = { ...buildEmptyPlayer(), ...r.data.player };
               await this.refreshDashboard();
@@ -1554,7 +1559,7 @@
             this.craftLoading = true;
           }
           try {
-            const r = await axios.post('/web/fishgame/api/compose/list', {
+            const r = await axios.post('/fishgame/api/compose/list', {
               game: this.credentials.game,
               user: this.credentials.user,
             });
@@ -1594,7 +1599,7 @@
           }
           this.renameSubmitting = true;
           try {
-            const r = await axios.post('/web/fishgame/api/player/rename', {
+            const r = await axios.post('/fishgame/api/player/rename', {
               game: this.credentials.game,
               user: this.credentials.user,
               name: name,
@@ -1615,7 +1620,7 @@
           if (!itemId) return;
           if (!confirm('确认使用该道具？')) return;
           try {
-            const r = await axios.post('/web/fishgame/api/inventory/use', {
+            const r = await axios.post('/fishgame/api/inventory/use', {
               game: this.credentials.game,
               user: this.credentials.user,
               item_id: itemId,
@@ -1748,7 +1753,7 @@
             return;
           }
           try {
-            const r = await axios.post('/web/fishgame/api/pot/add', {
+            const r = await axios.post('/fishgame/api/pot/add', {
               game: this.credentials.game,
               user: this.credentials.user,
               item_id: this.potForm.itemId,
@@ -1772,7 +1777,7 @@
             return;
           }
           try {
-            const r = await axios.post('/web/fishgame/api/buildings/add', {
+            const r = await axios.post('/fishgame/api/buildings/add', {
               game: this.credentials.game,
               user: this.credentials.user,
               building: this.selectedBuilding.name,
@@ -1792,7 +1797,7 @@
             return;
           }
           try {
-            const r = await axios.post('/web/fishgame/api/buildings/upgrade', {
+            const r = await axios.post('/fishgame/api/buildings/upgrade', {
               game: this.credentials.game,
               user: this.credentials.user,
               building: this.selectedBuilding.name,
@@ -1812,7 +1817,7 @@
           }
           this.craftingId = itemId;
           try {
-            const r = await axios.post('/web/fishgame/api/compose', {
+            const r = await axios.post('/fishgame/api/compose', {
               game: this.credentials.game,
               user: this.credentials.user,
               item_id: itemId,
@@ -1855,7 +1860,7 @@
           if (!this.canCatch) return;
           this.catching = true;
           try {
-            const r = await axios.post('/web/fishgame/api/catch', {
+            const r = await axios.post('/fishgame/api/catch', {
               game: this.credentials.game,
               user: this.credentials.user,
               masterBall,
@@ -1892,7 +1897,7 @@
           }
           this.drawDialog.loading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/gacha/draw', {
+            const r = await axios.post('/fishgame/api/gacha/draw', {
               game: this.credentials.game,
               user: this.credentials.user,
               mode: this.drawDialog.mode,
@@ -1921,7 +1926,7 @@
             }
             this.signingIn = true;
             try {
-              const r = await axios.post('/web/fishgame/api/signin', {
+              const r = await axios.post('/fishgame/api/signin', {
                 game: this.credentials.game,
                 user: this.credentials.user,
               });
@@ -1994,7 +1999,7 @@
             this.portDialog.loading = true;
           }
           try {
-            const r = await axios.post('/web/fishgame/api/port/status', {
+            const r = await axios.post('/fishgame/api/port/status', {
               game: this.credentials.game,
               user: this.credentials.user,
             });
@@ -2033,7 +2038,7 @@
           }
           this.portDialog.joinLoading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/port/join', {
+            const r = await axios.post('/fishgame/api/port/join', {
               game: this.credentials.game,
               user: this.credentials.user,
               nickname: this.player.name,
@@ -2055,7 +2060,7 @@
           }
           this.portDialog.leaveLoading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/port/leave', {
+            const r = await axios.post('/fishgame/api/port/leave', {
               game: this.credentials.game,
               user: this.credentials.user,
             });
@@ -2076,7 +2081,7 @@
           }
           this.portDialog.equipLoading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/port/equip', {
+            const r = await axios.post('/fishgame/api/port/equip', {
               game: this.credentials.game,
               user: this.credentials.user,
               item_id: this.portDialog.equipItemId,
@@ -2098,7 +2103,7 @@
           }
           this.portDialog.startLoading = true;
           try {
-            const r = await axios.post('/web/fishgame/api/port/start', {
+            const r = await axios.post('/fishgame/api/port/start', {
               game: this.credentials.game,
               user: this.credentials.user,
             });

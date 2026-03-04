@@ -462,11 +462,14 @@ class Backpack:
 
 # 记录以及图鉴功能
 class FishLog:
-    def __init__(self, data):
+    def __init__(self, data, shiny_data=None):
         self.__data: list[int] = data
+        self.__shiny_data: list[int] = shiny_data if shiny_data is not None else []
 
-    def add_log(self, fish_id: int):
+    def add_log(self, fish_id: int, is_shiny: bool = False):
         self.__data.append(fish_id)
+        if is_shiny and fish_id not in self.__shiny_data:
+            self.__shiny_data.append(fish_id)
 
     def __len__(self):
         return len(self.__data)
@@ -480,9 +483,18 @@ class FishLog:
     def caught(self, fish_id: int):
         return fish_id in self.__data
     
+    def is_shiny(self, fish_id: int):
+        """检查是否捕获过该鱼的异色版本"""
+        return fish_id in self.__shiny_data
+    
     @property
     def caught_set(self):
         return set(self.__data)
+
+    @property
+    def shiny_set(self):
+        """返回已捕获的异色鱼ID集合"""
+        return set(self.__shiny_data)
 
     # def __setitem__(self, index, value):
     #     self.__data[index] = value
@@ -490,5 +502,6 @@ class FishLog:
     @property
     def items(self) -> list[Fish]:
         return [Fish.get(fish_id) for fish_id in self.__data]
+
     
 

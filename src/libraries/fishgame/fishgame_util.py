@@ -248,6 +248,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
     
     # 统计已捕获的鱼
     caught_fish_ids = player.fish_log.caught_set
+    shiny_fish_ids = player.fish_log.shiny_set
     
     # 基础鱼 (ID 1-32)
     base_fish_caught = len([fish_id for fish_id in caught_fish_ids if 1 <= fish_id <= base_fish_count])
@@ -256,10 +257,11 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
     group_fish_caught = len([fish_id for fish_id in caught_fish_ids if fish_id > base_fish_count])
     
     total_caught = base_fish_caught + group_fish_caught
+    total_shiny = len(shiny_fish_ids)
     
     # 显示完成率
     completion_rate = (total_caught / total_fish_count) * 100
-    draw.text((60, y + 40), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)", 
+    draw.text((60, y + 40), f"图鉴完成度: {total_caught}/{total_fish_count} ({completion_rate:.1f}%)  异色: ★{total_shiny}", 
              fill=(241, 250, 140), font=regular_font)
     draw.text((60, y + 65), f"基础鱼: {base_fish_caught}/{base_fish_count}  鱼群鱼: {group_fish_caught}/{group_fish_count}", 
              fill=(248, 248, 242), font=small_font)
@@ -283,6 +285,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
         if fish:
             # 判断是否被捕获过
             is_caught = i in caught_fish_ids
+            is_shiny = player.fish_log.is_shiny(i)
             
             # 判断是否在当前群中被发现过
             group_fish_log = game.fish_log if game else None
@@ -302,8 +305,10 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
             else:
                 color = (128, 128, 128)
             
-            # 显示鱼名或问号
+            # 显示鱼名或问号，异色鱼添加星标
             display_name = fish.name if is_discovered else "？？？"
+            if is_shiny:
+                display_name = "★" + display_name
             draw.text((x, y), f"{i:2d}. {display_name}", fill=color, font=small_font)
     
     # 绘制今日鱼群主题鱼图鉴
@@ -329,6 +334,7 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
             
             # 判断是否被捕获过
             is_caught = fish.id in caught_fish_ids
+            is_shiny = player.fish_log.is_shiny(fish.id)
             
             # 判断是否在当前群中被发现过
             group_fish_log = game.fish_log if game else None
@@ -348,8 +354,10 @@ def create_pokedex_content(draw, player: FishPlayer, game: FishGame, font_dict, 
             else:
                 color = (128, 128, 128)
             
-            # 显示鱼名或问号
+            # 显示鱼名或问号，异色鱼添加星标
             display_name = fish.name if is_discovered else "？？？"
+            if is_shiny:
+                display_name = "★" + display_name
             draw.text((x, y), f"{fish.id}. {display_name}", fill=color, font=small_font)
 
 
